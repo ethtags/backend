@@ -10,9 +10,14 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
+# std lib imports
+import os
+
+# thid part imports
 from pathlib import Path
 from dotenv import load_dotenv
-import os
+
+# our imports
 
 load_dotenv(".env")  # loads the configs from .env
 
