@@ -11,6 +11,7 @@ platformdirs==2.5.2
 pylint==2.13.7
 pylint-django==2.5.3
 pylint-plugin-utils==0.7
+python-dotenv==0.20.0
 pytz==2022.1
 sqlparse==0.4.2
 tomli==2.0.1
