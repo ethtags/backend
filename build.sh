@@ -24,6 +24,9 @@ cd tagmi
 # run linter
 pylint --load-plugins pylint_django --django-settings-module=tagmi.settings ./tagmi/
 
+# run flake8
+flake8 ./
+
 # run tests
 python manage.py test
 
