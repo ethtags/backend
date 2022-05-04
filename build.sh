@@ -22,10 +22,10 @@ cd tagmi
 [ -f ".env" ] || cp ./dev.env ./.env
 
 # run linter
-pylint --load-plugins pylint_django --django-settings-module=tagmi.settings ./tagmi/
+pylint --load-plugins pylint_django --django-settings-module=tagmi.settings ./tagmi/ ./nametags/
 
 # run flake8
-flake8 ./
+flake8 --extend-exclude "migrations" ./
 
 # run tests
 python manage.py test
