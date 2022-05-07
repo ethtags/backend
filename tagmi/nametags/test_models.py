@@ -45,3 +45,65 @@ class TagTests(TestCase):
                 address=address,
                 nametag=tag_value
             )
+
+
+class AddressTests(TestCase):
+    """ Class that tests the Address model. """
+
+    def setUp(self):
+        """
+        Runs before each test.
+        """
+        self.addr = "0x4622BeF7d6C5f7f1ACC479B764688DC3E7316d68"
+
+    def test_address_lowercase(self):
+        """
+        Assert that an address is saved to the database as
+        lowercase even if it is passed in as mixed or uppercase.
+        """
+        Address.objects.create(pubkey=self.addr)
+
+        address = Address.objects.first()
+        self.assertEqual(
+            address.pubkey,
+            self.addr.lower()
+        )
+
+    def test_address_invalid_length(self):
+        """
+        Assert that a ValidationError is raised if an
+        address is not 42 characters long.
+        """
+        short = self.addr[0:41]
+
+        with self.assertRaises(ValidationError) as error:
+            Address.objects.create(pubkey=short)
+
+        err_msg = error.exception.messages[0]
+        self.assertIn("must be 42 characters", err_msg)
+
+    def test_address_no_0x(self):
+        """
+        Assert that a ValidationError is raised if an
+        address does not start with 0x.
+        """
+        bad_prefix = f"0z{self.addr[2:42]}"
+
+        with self.assertRaises(ValidationError) as error:
+            Address.objects.create(pubkey=bad_prefix)
+
+        err_msg = error.exception.messages[0]
+        self.assertIn("must start with 0x", err_msg)
+
+    def test_address_bad_hex(self):
+        """
+        Assert that a ValidationError is raised if an
+        address has invalid hex after the 0x.
+        """
+        bad_hex = f"{self.addr[0:41]}z"
+
+        with self.assertRaises(ValidationError) as error:
+            Address.objects.create(pubkey=bad_hex)
+
+        err_msg = error.exception.messages[0]
+        self.assertIn("must be hex", err_msg)
