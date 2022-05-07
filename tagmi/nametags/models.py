@@ -4,6 +4,7 @@ Module containing application objects that will be mapped to database tables.
 # std lib imports
 
 # third party imports
+from django.core.exceptions import ValidationError
 from django.db import models
 
 # our imports
@@ -19,22 +20,34 @@ class Address(models.Model):
         editable=False
     )
 
-    def save(self, *args, **kwargs):
-        """ Custom business logic on write. """
+    def clean(self, *args, **kwargs):
+        """ Validation of custom business logic before. """
 
         # make sure public address is 42 characters
-        assert len(self.publickey) == 42
+        if len(self.publickey) != 42:
+            raise ValidationError(
+                "pubkey must be 42 characters"
+            )
 
         # save public address as lowercase
         self.publickey = self.publickey.lower()
 
         # assert public address starts with 0x
-        assert self.publickey[0:2] == "0x"
+        if self.publickey[0:2] != "0x":
+            raise ValidationError("pubkey must start with 0x")
 
-        # raise ValueError if the 40 chars after 0x are not hex
-        int(self.publickey[2:42], 16)
+        # assert pubkey is hex
+        try:
+            int(self.publickey[2:42], 16)
+        except ValueError as value_error:
+            raise ValidationError(
+                "pubkey must be hex after the '0x'"
+            ) from value_error
 
-        # call save
+    def save(self, *args, **kwargs):
+        """ Custom business logic on write. """
+
+        self.full_clean()
         super().save(*args, **kwargs)
 
 
@@ -43,13 +56,31 @@ class Tag(models.Model):
 
     nametag = models.CharField(
         max_length=60,
-        unique=True,
         blank=False,
     )
     address = models.ForeignKey(
         to=Address,
         on_delete=models.CASCADE
     )
+
+    def validate_unique(self, *args, **kwargs):
+        """ Validate unique constraints. """
+
+        super().validate_unique(*args, **kwargs)
+
+        # check for existing nametag
+        exists = Tag.objects.filter(
+            address=self.address,
+            nametag=self.nametag
+        )
+        if len(exists) > 0:
+            raise ValidationError("Nametag already exists for that address.")
+
+    def save(self, *args, **kwargs):
+        """ Custom business logic on write. """
+
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 
 class Vote(models.Model):

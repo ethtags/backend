@@ -143,3 +143,5 @@ REST_FRAMEWORK = {
         'rest_framework.renderers.JSONRenderer'
     ]
 }
+handler500 = 'rest_framework.exceptions.server_error'
+handler400 = 'rest_framework.exceptions.bad_request'
