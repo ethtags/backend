@@ -17,6 +17,21 @@ class VoteSerializer(serializers.ModelSerializer):
         model = Vote
         fields = ["value"]
 
+    def create(self, validated_data):
+        # get Tag id from the URL
+        tag_id = self.context.get("view").kwargs["tag_id"]
+
+        # get Tag
+        tag = Tag.objects.get(id=tag_id)
+
+        # create Vote
+        vote = Vote.objects.create(
+            tag=tag,
+            value=self.validated_data["value"]
+        )
+
+        return vote
+
 
 class TagSerializer(serializers.ModelSerializer):
     """ Serializer for the Tag model. """
@@ -28,7 +43,7 @@ class TagSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tag
-        fields = ["nametag", "votes"]
+        fields = ["id", "nametag", "votes"]
 
     def create(self, validated_data):
         # get address from the URL

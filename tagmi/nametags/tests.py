@@ -1,5 +1,9 @@
 """
 Module containing tests for the nametags application.
+TODO:
+  # test updating a vote for a nametag by creator
+  # test deleting a vote for nametag by creator
+  # test only 1 vote allowed per user per nametag per address
 """
 # std lib imports
 
@@ -249,3 +253,126 @@ class NametagsTests(APITestCase):
             response.data[1]["votes"][0]["value"],
             True
         )
+
+
+class VoteTests(APITestCase):
+    """
+    Represents a Django class test case.
+    """
+
+    def setUp(self):
+        """
+        Runs once before each test.
+        """
+        self.test_addrs = [
+            "0x4622BeF7d6C5f7f1ACC479B764688DC3E7316d68",
+            "0x41329485877D12893bC4ef88A9208ee5cB5f5525"
+        ]
+
+    def test_upvote_nametag(self):
+        """
+        Assert that an upvote is created for the desired nametag.
+        """
+        # set up test
+        # create nametag
+        response = self.client.post(
+            f"/{self.test_addrs[0]}/tags/",
+            {"nametag": "Test Address One"}
+        )
+        tag_id = response.data["id"]
+
+        # make request
+        url = f"/{self.test_addrs[0]}/tags/{tag_id}/votes/"
+        data = {"value": True}
+        response = self.client.post(url, data)
+
+        # make assertions
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # assert the nametag now has two votes,
+        # one from creation and a second from upvoting
+        votes = Vote.objects.filter(tag=tag_id)
+        self.assertEqual(len(votes), 2)
+
+        # assert that both votes are upvotes
+        self.assertEqual(votes[0].value, True)
+        self.assertEqual(votes[1].value, True)
+
+    def test_downvote_nametag(self):
+        """
+        Assert that a downvote is created for the desired nametag.
+        """
+        # set up test
+        # create nametag
+        response = self.client.post(
+            f"/{self.test_addrs[0]}/tags/",
+            {"nametag": "Test Address One"}
+        )
+        tag_id = response.data["id"]
+
+        # make request
+        url = f"/{self.test_addrs[0]}/tags/{tag_id}/votes/"
+        data = {"value": False}
+        response = self.client.post(url, data)
+
+        # make assertions
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        # assert the nametag now has two votes,
+        # one from creation and a second from downvoting
+        votes = Vote.objects.filter(tag=tag_id)
+        self.assertEqual(len(votes), 2)
+
+        # assert that one vote is an upvote and the other is a downvote
+        self.assertEqual(votes[0].value, True)
+        self.assertEqual(votes[1].value, False)
+
+    def test_post_multiple_votes_nametag(self):
+        """
+        Assert that an attempt to post in multiple votes for
+        a nametag in one request returns a 400 BAD REQUEST.
+        """
+        # set up test
+        # create nametag
+        response = self.client.post(
+            f"/{self.test_addrs[0]}/tags/",
+            {"nametag": "Test Address One"}
+        )
+        tag_id = response.data["id"]
+
+        # make request
+        url = f"/{self.test_addrs[0]}/tags/{tag_id}/votes/"
+        data = [{"value": False}, {"value": True}]
+        response = self.client.post(url, data)
+
+        # make assertions
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_list_votes_nametag(self):
+        """
+        Assert that all votes for a specific nametag are returned.
+        """
+        # set up test
+        # create nametag
+        response = self.client.post(
+            f"/{self.test_addrs[0]}/tags/",
+            {"nametag": "Test Address One"}
+        )
+        tag_id = response.data["id"]
+
+        # create two upvotes in addition to the
+        # upvote that happens automatically on nametag creation
+        url = f"/{self.test_addrs[0]}/tags/{tag_id}/votes/"
+        data = {"value": True}
+        self.client.post(url, data)
+        self.client.post(url, data)
+
+        # make request
+        response = self.client.get(url)  # list votes for nametag
+
+        # make assertions
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        self.assertEqual(response.data[0]["value"], True)
+        self.assertEqual(response.data[1]["value"], True)
+        self.assertEqual(response.data[2]["value"], True)
