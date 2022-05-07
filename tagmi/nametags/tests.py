@@ -20,7 +20,7 @@ class NametagsTests(APITestCase):
         """
         Runs once before each test.
         """
-        self.addresses = [
+        self.test_addrs = [
             "0x4622BeF7d6C5f7f1ACC479B764688DC3E7316d68",
             "0x41329485877D12893bC4ef88A9208ee5cB5f5525"
         ]
@@ -32,7 +32,7 @@ class NametagsTests(APITestCase):
         Assert that an upvote is created for the new nametag.
         """
         # set up test
-        url = f"/{self.addresses[0]}/tags/"
+        url = f"/{self.test_addrs[0]}/tags/"
         tag_value = "Test Address One"
         data = {'nametag': tag_value}
 
@@ -45,7 +45,7 @@ class NametagsTests(APITestCase):
         # Address created
         self.assertEqual(Address.objects.count(), 1)
         self.assertIsNotNone(
-            Address.objects.get(pubkey=self.addresses[0].lower())
+            Address.objects.get(pubkey=self.test_addrs[0].lower())
         )
 
         # Tag created
@@ -74,11 +74,11 @@ class NametagsTests(APITestCase):
         Assert that an upvote is created for the new nametag.
         """
         # set up test
-        url = f"/{self.addresses[0]}/tags/"
+        url = f"/{self.test_addrs[0]}/tags/"
         tag_value = "Test Address One"
         data = {'nametag': tag_value}
         Address.objects.create(
-            pubkey=self.addresses[0]
+            pubkey=self.test_addrs[0]
         )
 
         # assert that address count is 1
@@ -102,7 +102,7 @@ class NametagsTests(APITestCase):
         )
         self.assertEqual(
             tag_one.address.pubkey,
-            self.addresses[0].lower()
+            self.test_addrs[0].lower()
         )
 
         # Vote created
@@ -117,7 +117,7 @@ class NametagsTests(APITestCase):
         """
         # set up test
         tag_value = "Test Address One"
-        url = f"/{self.addresses[0]}/tags/"
+        url = f"/{self.test_addrs[0]}/tags/"
         data = {'nametag': tag_value}
         response = self.client.post(url, data)  # create tag
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -149,13 +149,13 @@ class NametagsTests(APITestCase):
         # create a nametag for address one
         tag_value = "Test Address One"
         data = {'nametag': tag_value}
-        url = f"/{self.addresses[0]}/tags/"
+        url = f"/{self.test_addrs[0]}/tags/"
         response = self.client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
         # make request
         # create a nametag for address two
-        url = f"/{self.addresses[1]}/tags/"
+        url = f"/{self.test_addrs[1]}/tags/"
         response = self.client.post(url, data)
 
         # make assertions
@@ -165,13 +165,13 @@ class NametagsTests(APITestCase):
 
         # assert that both addresses have a nametag with the same value
         tags_addrs_one = Tag.objects.filter(
-            address=self.addresses[0].lower(),
+            address=self.test_addrs[0].lower(),
             nametag=tag_value
         )
         self.assertEqual(len(tags_addrs_one), 1)
 
         tags_addrs_two = Tag.objects.filter(
-            address=self.addresses[1].lower(),
+            address=self.test_addrs[1].lower(),
             nametag=tag_value
         )
         self.assertEqual(len(tags_addrs_two), 1)
@@ -182,20 +182,20 @@ class NametagsTests(APITestCase):
         """
         # set up test
         # create nametags for addresses one and two
-        url = f"/{self.addresses[0]}/tags/"
+        url = f"/{self.test_addrs[0]}/tags/"
         data = {'nametag': "Address One Nametag One"}
         self.client.post(url, data)
 
         data = {'nametag': "Address One Nametag Two"}
         self.client.post(url, data)
 
-        url = f"/{self.addresses[1]}/tags/"
+        url = f"/{self.test_addrs[1]}/tags/"
         data = {'nametag': "Address Two Nametag One"}
         self.client.post(url, data)
 
         # make request
         # list nametags for address one
-        url = f"/{self.addresses[0]}/tags/"
+        url = f"/{self.test_addrs[0]}/tags/"
         response = self.client.get(url)
 
         # make assertions
@@ -212,7 +212,7 @@ class NametagsTests(APITestCase):
         )
 
         # list nametags for address two
-        url = f"/{self.addresses[1]}/tags/"
+        url = f"/{self.test_addrs[1]}/tags/"
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
@@ -228,7 +228,7 @@ class NametagsTests(APITestCase):
         """
         # set up test
         # create nametags for address one
-        url = f"/{self.addresses[0]}/tags/"
+        url = f"/{self.test_addrs[0]}/tags/"
         data = {'nametag': "Address One Nametag One"}
         self.client.post(url, data)
         data = {'nametag': "Address One Nametag Two"}
