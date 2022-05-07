@@ -31,7 +31,7 @@ class TagTests(TestCase):
         # prepare test
         tag_value = "Tag One"
         address = Address.objects.create(
-            publickey=self.test_addrs[0]
+            pubkey=self.test_addrs[0]
         )
         Tag.objects.create(
             address=address,

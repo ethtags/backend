@@ -23,7 +23,7 @@ class TagSerializer(serializers.ModelSerializer):
 
         # get or create Address
         address, _ = Address.objects.get_or_create(
-            publickey=address_kwarg
+            pubkey=address_kwarg
         )
 
         # get or create Nametag

@@ -45,7 +45,7 @@ class NametagsTests(APITestCase):
         # Address created
         self.assertEqual(Address.objects.count(), 1)
         self.assertIsNotNone(
-            Address.objects.get(publickey=self.addresses[0].lower())
+            Address.objects.get(pubkey=self.addresses[0].lower())
         )
 
         # Tag created
@@ -78,7 +78,7 @@ class NametagsTests(APITestCase):
         tag_value = "Test Address One"
         data = {'nametag': tag_value}
         Address.objects.create(
-            publickey=self.addresses[0]
+            pubkey=self.addresses[0]
         )
 
         # assert that address count is 1
@@ -101,7 +101,7 @@ class NametagsTests(APITestCase):
             tag_value
         )
         self.assertEqual(
-            tag_one.address.publickey,
+            tag_one.address.pubkey,
             self.addresses[0].lower()
         )
 

@@ -13,7 +13,7 @@ from django.db import models
 class Address(models.Model):
     """ Represents an Ethereum based address. """
 
-    publickey = models.CharField(
+    pubkey = models.CharField(
         max_length=42,
         primary_key=True,
         blank=False,
@@ -24,21 +24,21 @@ class Address(models.Model):
         """ Validation of custom business logic before. """
 
         # make sure public address is 42 characters
-        if len(self.publickey) != 42:
+        if len(self.pubkey) != 42:
             raise ValidationError(
                 "pubkey must be 42 characters"
             )
 
         # save public address as lowercase
-        self.publickey = self.publickey.lower()
+        self.pubkey = self.pubkey.lower()
 
         # assert public address starts with 0x
-        if self.publickey[0:2] != "0x":
+        if self.pubkey[0:2] != "0x":
             raise ValidationError("pubkey must start with 0x")
 
         # assert pubkey is hex
         try:
-            int(self.publickey[2:42], 16)
+            int(self.pubkey[2:42], 16)
         except ValueError as value_error:
             raise ValidationError(
                 "pubkey must be hex after the '0x'"
