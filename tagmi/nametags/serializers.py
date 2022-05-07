@@ -10,12 +10,25 @@ from rest_framework import serializers
 from .models import Address, Tag, Vote
 
 
-class TagSerializer(serializers.ModelSerializer):
+class VoteSerializer(serializers.ModelSerializer):
     """ Serializer for the Tag model. """
 
     class Meta:
+        model = Vote
+        fields = ["value"]
+
+
+class TagSerializer(serializers.ModelSerializer):
+    """ Serializer for the Tag model. """
+
+    votes = VoteSerializer(
+        many=True,
+        read_only=True
+    )
+
+    class Meta:
         model = Tag
-        fields = ["nametag"]
+        fields = ["nametag", "votes"]
 
     def create(self, validated_data):
         # get address from the URL

@@ -196,7 +196,7 @@ class NametagsTests(APITestCase):
         # make request
         # list nametags for address one
         url = f"/{self.addresses[0]}/tags/"
-        response = self.client.get(url, data)
+        response = self.client.get(url)
 
         # make assertions
         # assert that the response was a 200
@@ -213,10 +213,39 @@ class NametagsTests(APITestCase):
 
         # list nametags for address two
         url = f"/{self.addresses[1]}/tags/"
-        response = self.client.get(url, data)
+        response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(
             response.data[0]["nametag"],
             "Address Two Nametag One"
+        )
+
+    def test_list_nametags_votes(self):
+        """
+        Assert that a list of votes is returned for each
+        nametag in the list of nametags.
+        """
+        # set up test
+        # create nametags for address one
+        url = f"/{self.addresses[0]}/tags/"
+        data = {'nametag': "Address One Nametag One"}
+        self.client.post(url, data)
+        data = {'nametag': "Address One Nametag Two"}
+        self.client.post(url, data)
+
+        # make request
+        response = self.client.get(url)
+
+        # make assertions
+        # assert that votes exist for each created tag
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)  # two tags
+        self.assertEqual(
+            response.data[0]["votes"][0]["value"],
+            True
+        )
+        self.assertEqual(
+            response.data[1]["votes"][0]["value"],
+            True
         )

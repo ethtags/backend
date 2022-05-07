@@ -60,7 +60,8 @@ class Tag(models.Model):
     )
     address = models.ForeignKey(
         to=Address,
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        related_name="tags"
     )
 
     def validate_unique(self, *args, **kwargs):
@@ -90,5 +91,6 @@ class Vote(models.Model):
     value = models.BooleanField(null=True)
     tag = models.ForeignKey(
         to=Tag,
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        related_name="votes"
     )
