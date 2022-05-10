@@ -8,6 +8,7 @@ from rest_framework import serializers
 
 # our imports
 from .models import Address, Tag, Vote
+from .utils import create_session_if_dne
 
 
 class VoteSerializer(serializers.ModelSerializer):
@@ -25,9 +26,12 @@ class VoteSerializer(serializers.ModelSerializer):
         tag = Tag.objects.get(id=tag_id)
 
         # create Vote
+        request = self.context.get("view").request
+        create_session_if_dne(request)
         vote = Vote.objects.create(
             tag=tag,
-            value=self.validated_data["value"]
+            value=self.validated_data["value"],
+            created_by_session_id=request.session.session_key
         )
 
         return vote
@@ -55,12 +59,19 @@ class TagSerializer(serializers.ModelSerializer):
         )
 
         # get or create Nametag
+        request = self.context.get("view").request
+        create_session_if_dne(request)
         tag, _ = Tag.objects.get_or_create(
             nametag=validated_data.pop("nametag"),
-            address=address
+            address=address,
+            created_by_session_id=request.session.session_key
         )
 
         # automatically upvote the nametag since user wanted to create it
-        Vote.objects.create(value=True, tag=tag)
+        Vote.objects.create(
+            value=True,
+            tag=tag,
+            created_by_session_id=request.session.session_key
+        )
 
         return tag

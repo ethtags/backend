@@ -54,14 +54,17 @@ class Address(models.Model):
 class Tag(models.Model):
     """ Represents a nametag related to an address and can be voted on. """
 
-    nametag = models.CharField(
-        max_length=60,
-        blank=False,
-    )
     address = models.ForeignKey(
         to=Address,
         on_delete=models.CASCADE,
         related_name="tags"
+    )
+    nametag = models.CharField(
+        max_length=60,
+        blank=False,
+    )
+    created_by_session_id = models.CharField(
+        max_length=40, null=True, blank=True
     )
 
     def validate_unique(self, *args, **kwargs):
@@ -93,4 +96,7 @@ class Vote(models.Model):
         to=Tag,
         on_delete=models.CASCADE,
         related_name="votes"
+    )
+    created_by_session_id = models.CharField(
+        max_length=40, null=True, blank=True
     )

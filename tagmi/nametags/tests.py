@@ -59,6 +59,10 @@ class NametagsTests(APITestCase):
             tag_one.nametag,
             tag_value
         )
+        self.assertEqual(
+            tag_one.created_by_session_id,
+            self.client.cookies.get("sessionid").value
+        )
 
         # Vote created
         self.assertEqual(Vote.objects.count(), 1)
@@ -70,6 +74,10 @@ class NametagsTests(APITestCase):
         self.assertEqual(
             vote_one.value,
             True  # upvote
+        )
+        self.assertEqual(
+            vote_one.created_by_session_id,
+            self.client.cookies.get("sessionid").value
         )
 
     def test_create_new_nametag_address_exists(self):
@@ -297,6 +305,10 @@ class VoteTests(APITestCase):
         # assert that both votes are upvotes
         self.assertEqual(votes[0].value, True)
         self.assertEqual(votes[1].value, True)
+        self.assertEqual(
+            votes[1].created_by_session_id,
+            self.client.cookies.get("sessionid").value
+        )
 
     def test_downvote_nametag(self):
         """
