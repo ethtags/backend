@@ -82,6 +82,14 @@ class AddressTests(TestCase):
         err_msg = error.exception.messages[0]
         self.assertIn("must be 42 characters", err_msg)
 
+        too_long = f"{self.addr}A"
+
+        with self.assertRaises(ValidationError) as error:
+            Address.objects.create(pubkey=too_long)
+
+        err_msg = error.exception.messages[0]
+        self.assertIn("at most 42 characters", err_msg)
+
     def test_address_no_0x(self):
         """
         Assert that a ValidationError is raised if an

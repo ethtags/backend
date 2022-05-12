@@ -1,8 +1,9 @@
 """
 Module containing tests for the nametags application.
 TODO:
-  # test that ValidationErrors from the models return a
-        400 BAD REQUEST to the view instead of 500.
+  # test that an 'owned' field is returned on Votes
+    list to signal whether a user owns the object
+    or not -- this allows users to update their vote
   # refactor tests
 """
 # std lib imports
@@ -29,7 +30,7 @@ class NametagsTests(APITestCase):
             "0x41329485877D12893bC4ef88A9208ee5cB5f5525"
         ]
 
-    def test_create_new_nametag_address_dne(self):
+    def test_create_nametag_address_dne(self):
         """
         Assert that a new address is created when it does not exist.
         Assert that a new nametag is created for the new address.
@@ -80,7 +81,7 @@ class NametagsTests(APITestCase):
             self.client.cookies.get("sessionid").value
         )
 
-    def test_create_new_nametag_address_exists(self):
+    def test_create_nametag_address_exists(self):
         """
         Assert that a new nametag is created for an existing address.
         Assert that an upvote is created for the new nametag.
@@ -120,7 +121,7 @@ class NametagsTests(APITestCase):
         # Vote created
         self.assertEqual(Vote.objects.count(), 1)
 
-    def test_create_new_nametag_exists(self):
+    def test_create_nametag_exists(self):
         """
         Assert that a new nametag is NOT created if a nametag
         with the same value already exists for a given address.
@@ -188,6 +189,37 @@ class NametagsTests(APITestCase):
             nametag=tag_value
         )
         self.assertEqual(len(tags_addrs_two), 1)
+
+    def test_create_nametag_invalid_address(self):
+        """
+        Assert that a 400 BAD REQUEST is returned when a
+        user creates a new address that is invalid.
+        """
+        # set up test
+        tag_value = "Test Address One"
+        data = {'nametag': tag_value}
+
+        # address without 0x prepended
+        url = f"/{self.test_addrs[0][2:42]}/tags/"
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # address with invalid hex after 0x
+        # note there is an uppercase Z at the end of the address in the URL
+        url = f"/{self.test_addrs[0][0:41]}Z/tags/"
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # address that is too short
+        url = f"/{self.test_addrs[0][0:41]}/tags/"
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # address that is too long
+        # note there is an extra A at the end of the address in the URL
+        url = f"/{self.test_addrs[0]}A/tags/"
+        response = self.client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_list_nametags(self):
         """
