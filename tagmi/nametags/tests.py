@@ -1,9 +1,9 @@
 """
 Module containing tests for the nametags application.
 TODO:
-  # test updating a vote for a nametag by creator
-  # test deleting a vote for nametag by creator
   # test only 1 vote allowed per user per nametag per address
+  # test that ValidationErrors from the models return a 400 BAD REQUEST to the view instead of 500.
+  # refactor tests
 """
 # std lib imports
 
@@ -154,8 +154,9 @@ class NametagsTests(APITestCase):
 
     def test_create_nametag_exists_diff_address(self):
         """
-        Assert that a new nametag is created for a given address if a nametag
-        with the same value already exists for a different address.
+        Assert that a new nametag is created for a given address even
+        if a nametag with the same value already exists for a
+        different address.
         """
         # set up test
         # create a nametag for address one
@@ -338,6 +339,10 @@ class VoteTests(APITestCase):
         # assert that one vote is an upvote and the other is a downvote
         self.assertEqual(votes[0].value, True)
         self.assertEqual(votes[1].value, False)
+        self.assertEqual(
+            votes[1].created_by_session_id,
+            self.client.cookies.get("sessionid").value
+        )
 
     def test_post_multiple_votes_nametag(self):
         """
@@ -359,6 +364,113 @@ class VoteTests(APITestCase):
 
         # make assertions
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_update_vote_owner(self):
+        """
+        Assert that the creator of a Vote can update it.
+        """
+        # set up test
+        # create nametag, note that an upvote is automatically
+        # created by the user that created a nametag
+        response = self.client.post(
+            f"/{self.test_addrs[0]}/tags/",
+            {"nametag": "Test Address One"}
+        )
+        tag_id = response.data["id"]
+        vote = Vote.objects.get(tag=tag_id)
+
+        # make request
+        # change the upvote to a downvote
+        url = f"/{self.test_addrs[0]}/votes/{vote.id}/"
+        data = {"value": False}
+        response = self.client.put(url, data)
+
+        # make assertions
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # assert that there is only 1 vote in the system
+        votes = Vote.objects.all()
+        self.assertEqual(len(votes), 1)
+
+        # assert that the existing vote was updated to a downvote
+        self.assertEqual(votes[0].value, False)
+
+    def test_update_vote_not_owner(self):
+        """
+        Assert that a user cannot change someone else's vote,
+        and that a 403 FORBIDDEN is returned.
+        """
+        # set up test
+        # create nametag, note that an upvote is automatically
+        # created by the user that created a nametag
+        response = self.client.post(
+            f"/{self.test_addrs[0]}/tags/",
+            {"nametag": "Test Address One"}
+        )
+        tag_id = response.data["id"]
+        vote = Vote.objects.get(tag=tag_id)
+
+        # make request
+        # try to update the vote as another user
+        self.client.cookies.clear()  # no cookies means no session
+        url = f"/{self.test_addrs[0]}/votes/{vote.id}/"
+        data = {"value": False}
+        response = self.client.put(url, data)
+
+        # make assertions
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Vote.objects.get(id=vote.id).value, True)
+
+    def test_delete_vote_owner(self):
+        """
+        Assert that the creator of a Vote can delete it.
+        """
+        # set up test
+        # create nametag, note that an upvote is automatically
+        # created by the user that created a nametag
+        response = self.client.post(
+            f"/{self.test_addrs[0]}/tags/",
+            {"nametag": "Test Address One"}
+        )
+        tag_id = response.data["id"]
+        vote = Vote.objects.get(tag=tag_id)
+
+        # make request
+        # delete the vote
+        url = f"/{self.test_addrs[0]}/votes/{vote.id}/"
+        response = self.client.delete(url)
+
+        # make assertions
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        # assert that the vote no longer exists
+        votes = Vote.objects.filter(id=vote.id)
+        self.assertEqual(len(votes), 0)
+
+    def test_delete_vote_not_owner(self):
+        """
+        Assert that a user cannot delete someone else's vote,
+        and that a 403 FORBIDDEN is returned.
+        """
+        # set up test
+        # create nametag, note that an upvote is automatically
+        # created by the user that created a nametag
+        response = self.client.post(
+            f"/{self.test_addrs[0]}/tags/",
+            {"nametag": "Test Address One"}
+        )
+        tag_id = response.data["id"]
+        vote = Vote.objects.get(tag=tag_id)
+
+        # make request
+        # try to delete the vote as another user
+        self.client.cookies.clear()  # no cookies means no session
+        url = f"/{self.test_addrs[0]}/votes/{vote.id}/"
+        response = self.client.delete(url)
+
+        # make assertions
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(len(Vote.objects.filter(id=vote.id)), 1)
 
     def test_list_votes_nametag(self):
         """

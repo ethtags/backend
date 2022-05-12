@@ -7,10 +7,11 @@ URL router for nametags application.
 from django.urls import path
 
 # our imports
-from .views import TagList, VoteList
+from .views import TagListCreate, VoteGetUpdateDelete, VoteListCreate
 
 
 urlpatterns = [
-    path('<str:address>/tags/', TagList.as_view()),
-    path('<str:address>/tags/<int:tag_id>/votes/', VoteList.as_view()),
+    path('<str:address>/tags/', TagListCreate.as_view()),
+    path('<str:address>/tags/<int:tag_id>/votes/', VoteListCreate.as_view()),
+    path('<str:address>/votes/<int:vote_id>/', VoteGetUpdateDelete.as_view()),
 ]

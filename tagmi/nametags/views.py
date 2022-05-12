@@ -5,13 +5,14 @@ Views for the nametags application.
 
 # third party imports
 from rest_framework import generics
+from rest_framework.exceptions import PermissionDenied
 
 # our imports
 from .models import Tag, Vote
 from . import serializers
 
 
-class TagList(generics.ListCreateAPIView):
+class TagListCreate(generics.ListCreateAPIView):
     """ View that allows listing and creating Tags. """
 
     serializer_class = serializers.TagSerializer
@@ -21,11 +22,30 @@ class TagList(generics.ListCreateAPIView):
         return queryset
 
 
-class VoteList(generics.ListCreateAPIView):
+class VoteListCreate(generics.ListCreateAPIView):
     """ View that allows listing and creating Votes. """
 
     serializer_class = serializers.VoteSerializer
+    queryset = Vote.objects.all()
+    lookup_url_kwarg = "tag_id"
 
-    def get_queryset(self):
-        queryset = Vote.objects.filter(tag=self.kwargs['tag_id'])
-        return queryset
+
+class VoteGetUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
+    """ View that allows listing and creating Votes. """
+
+    serializer_class = serializers.VoteSerializer
+    queryset = Vote.objects.all()
+    lookup_url_kwarg = "vote_id"
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        View for handling HTTP DELETE.
+        """
+        vote = Vote.objects.get(id=self.kwargs["vote_id"]) 
+
+        # only vote creator can delete the vote
+        if request.session.session_key != vote.created_by_session_id:
+            raise PermissionDenied("Only vote creator can delete vote.")
+
+        # perform delete
+        return super().destroy(request, *args, **kwargs)

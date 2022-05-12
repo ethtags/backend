@@ -5,6 +5,7 @@ Module containing serializers for the different models of the nametags app.
 
 # third party imports
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 
 # our imports
 from .models import Address, Tag, Vote
@@ -35,6 +36,19 @@ class VoteSerializer(serializers.ModelSerializer):
         )
 
         return vote
+
+    def update(self, instance, validated_data):
+
+        # only vote creator can update the vote
+        session_id = self.context.get("view").request.session.session_key
+        if instance.created_by_session_id != session_id:
+            raise PermissionDenied("Only vote creator can update vote.")
+    
+        # update the vote
+        instance.value = validated_data.get("value", instance.value)
+        instance.save()
+
+        return instance
 
 
 class TagSerializer(serializers.ModelSerializer):
