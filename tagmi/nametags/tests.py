@@ -1,7 +1,6 @@
 """
 Module containing tests for the nametags application.
 TODO:
-  # test only 1 vote allowed per user per nametag per address
   # test that ValidationErrors from the models return a
         400 BAD REQUEST to the view instead of 500.
   # refactor tests
@@ -294,6 +293,7 @@ class VoteTests(APITestCase):
         # make request
         url = f"/{self.test_addrs[0]}/tags/{tag_id}/votes/"
         data = {"value": True}
+        self.client.cookies.clear()  # refresh cookies to act as a new user
         response = self.client.post(url, data)
 
         # make assertions
@@ -327,6 +327,7 @@ class VoteTests(APITestCase):
         # make request
         url = f"/{self.test_addrs[0]}/tags/{tag_id}/votes/"
         data = {"value": False}
+        self.client.cookies.clear()  # refresh cookies to act as a new user
         response = self.client.post(url, data)
 
         # make assertions
@@ -347,8 +348,8 @@ class VoteTests(APITestCase):
 
     def test_post_multiple_votes_nametag(self):
         """
-        Assert that an attempt to post in multiple votes for
-        a nametag in one request returns a 400 BAD REQUEST.
+        Assert that an attempt to create multiple votes
+        for the same nametag by the same user is not allowed.
         """
         # set up test
         # create nametag
@@ -360,7 +361,7 @@ class VoteTests(APITestCase):
 
         # make request
         url = f"/{self.test_addrs[0]}/tags/{tag_id}/votes/"
-        data = [{"value": False}, {"value": True}]
+        data = {"value": False}
         response = self.client.post(url, data)
 
         # make assertions
@@ -413,7 +414,7 @@ class VoteTests(APITestCase):
 
         # make request
         # try to update the vote as another user
-        self.client.cookies.clear()  # no cookies means no session
+        self.client.cookies.clear()  # refresh cookies to act as a new user
         url = f"/{self.test_addrs[0]}/votes/{vote.id}/"
         data = {"value": False}
         response = self.client.put(url, data)
@@ -465,7 +466,7 @@ class VoteTests(APITestCase):
 
         # make request
         # try to delete the vote as another user
-        self.client.cookies.clear()  # no cookies means no session
+        self.client.cookies.clear()  # refresh cookies to act as a new user
         url = f"/{self.test_addrs[0]}/votes/{vote.id}/"
         response = self.client.delete(url)
 
@@ -489,7 +490,9 @@ class VoteTests(APITestCase):
         # upvote that happens automatically on nametag creation
         url = f"/{self.test_addrs[0]}/tags/{tag_id}/votes/"
         data = {"value": True}
+        self.client.cookies.clear()  # refresh cookies to act as a new user
         self.client.post(url, data)
+        self.client.cookies.clear()  # refresh cookies to act as a new user
         self.client.post(url, data)
 
         # make request

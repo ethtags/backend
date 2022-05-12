@@ -5,7 +5,7 @@ Module containing serializers for the different models of the nametags app.
 
 # third party imports
 from rest_framework import serializers
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import ValidationError, PermissionDenied
 
 # our imports
 from .models import Address, Tag, Vote
@@ -26,9 +26,18 @@ class VoteSerializer(serializers.ModelSerializer):
         # get Tag
         tag = Tag.objects.get(id=tag_id)
 
-        # create Vote
+        # create sesion for the user if it does not exist
         request = self.context.get("view").request
         create_session_if_dne(request)
+
+        # do not allow a user to vote on the same nametag twice
+        if Vote.objects.filter(
+            tag=tag,
+            created_by_session_id=request.session.session_key
+        ).exists():
+            raise ValidationError("User has already voted on this nametag.")
+
+        # create vote
         vote = Vote.objects.create(
             tag=tag,
             value=self.validated_data["value"],
