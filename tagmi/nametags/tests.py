@@ -536,3 +536,39 @@ class VoteTests(APITestCase):
         self.assertEqual(response.data[0]["value"], True)
         self.assertEqual(response.data[1]["value"], True)
         self.assertEqual(response.data[2]["value"], True)
+
+    def test_list_votes_owned_field(self):
+        """
+        Assert that listing votes of a nametag returns an
+        "Owned" field on the vote, which is True if the
+        requesting user created the Vote, and False otherwise.
+        """
+        # set up test
+        # create nametag
+        response = self.client.post(
+            f"/{self.test_addrs[0]}/tags/",
+            {"nametag": "Test Address One"}
+        )
+        tag_id = response.data["id"]
+
+        # create two upvotes in addition to the
+        # upvote that happens automatically on nametag creation
+        url = f"/{self.test_addrs[0]}/tags/{tag_id}/votes/"
+        data = {"value": True}
+        self.client.cookies.clear()  # refresh cookies to act as a new user
+        self.client.post(url, data)
+
+        # make request
+        self.client.cookies.clear()  # refresh cookies to act as a new user
+        self.client.post(url, data)
+        response = self.client.get(url)  # list votes for nametag
+
+        # make assertions
+        # assert that Owned is True on the last vote that was
+        # created, since it was created by the same user that
+        # sent the GET to list the votes
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        self.assertEqual(response.data[0]["owned"], False)
+        self.assertEqual(response.data[1]["owned"], False)
+        self.assertEqual(response.data[2]["owned"], True)

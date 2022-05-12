@@ -17,7 +17,20 @@ class VoteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Vote
-        fields = ["value"]
+        fields = ["value", "owned"]
+
+    owned = serializers.SerializerMethodField('get_is_owned_by')
+
+    def get_is_owned_by(self, obj):
+        """
+        Returns True if the Vote instance was created by the requestor.
+        """
+        session_id = self.context['request'].session.session_key
+        vote = obj
+
+        # True if vote was created by the requestor
+        return session_id == vote.created_by_session_id \
+            and vote.created_by_session_id is not None
 
     def create(self, validated_data):
         # get Tag id from the URL
