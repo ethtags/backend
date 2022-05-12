@@ -43,7 +43,7 @@ class VoteSerializer(serializers.ModelSerializer):
         session_id = self.context.get("view").request.session.session_key
         if instance.created_by_session_id != session_id:
             raise PermissionDenied("Only vote creator can update vote.")
-    
+
         # update the vote
         instance.value = validated_data.get("value", instance.value)
         instance.save()

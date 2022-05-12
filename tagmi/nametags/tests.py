@@ -2,7 +2,8 @@
 Module containing tests for the nametags application.
 TODO:
   # test only 1 vote allowed per user per nametag per address
-  # test that ValidationErrors from the models return a 400 BAD REQUEST to the view instead of 500.
+  # test that ValidationErrors from the models return a
+        400 BAD REQUEST to the view instead of 500.
   # refactor tests
 """
 # std lib imports

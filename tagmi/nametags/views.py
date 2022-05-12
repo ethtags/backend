@@ -41,7 +41,7 @@ class VoteGetUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
         """
         View for handling HTTP DELETE.
         """
-        vote = Vote.objects.get(id=self.kwargs["vote_id"]) 
+        vote = Vote.objects.get(id=self.kwargs["vote_id"])
 
         # only vote creator can delete the vote
         if request.session.session_key != vote.created_by_session_id:
