@@ -1,9 +1,6 @@
 """
 Module containing tests for the nametags application.
 TODO:
-  # test that an 'owned' field is returned on Votes
-    list to signal whether a user owns the object
-    or not -- this allows users to update their vote
   # refactor tests
 """
 # std lib imports
@@ -569,6 +566,9 @@ class VoteTests(APITestCase):
         # sent the GET to list the votes
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 3)
+        self.assertEqual(response.data[0]["id"], 1)
         self.assertEqual(response.data[0]["owned"], False)
+        self.assertEqual(response.data[1]["id"], 2)
         self.assertEqual(response.data[1]["owned"], False)
+        self.assertEqual(response.data[2]["id"], 3)
         self.assertEqual(response.data[2]["owned"], True)

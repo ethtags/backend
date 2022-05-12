@@ -17,7 +17,7 @@ class VoteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Vote
-        fields = ["value", "owned"]
+        fields = ["id", "value", "owned"]
 
     owned = serializers.SerializerMethodField('get_is_owned_by')
 
