@@ -1,8 +1,5 @@
 """
 Module containing tests for the nametags application.
-TODO:
-  # refactor tests
-  # make creating an existing nametag return a 400 instead of 201
 """
 # std lib imports
 
@@ -124,10 +121,8 @@ class NametagsTests(APITestCase):
 
     def test_create_nametag_exists(self):
         """
-        Assert that a new nametag is NOT created if a nametag
+        Assert that a 400 BAD REQUEST is returned if a nametag
         with the same value already exists for a given address.
-        Assert that a 201 is returned with the existing nametag.
-        Assert that an upvote is created for the existing nametag.
         """
         # set up test
         # create tag
@@ -139,18 +134,11 @@ class NametagsTests(APITestCase):
         response = self.client.post(self.urls["create"], self.req_data)
 
         # make assertions
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data["nametag"], self.tag_value)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         # assert that no new Tag was created
         tags = Tag.objects.all()
         self.assertEqual(len(tags), 1)
-
-        # assert that an upvote was created for the existing Tag
-        votes = Vote.objects.filter(tag=tags[0])
-        self.assertEqual(len(votes), 2)
-        self.assertEqual(votes[0].value, True)
-        self.assertEqual(votes[1].value, True)
 
     def test_create_nametag_exists_diff_address(self):
         """

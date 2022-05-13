@@ -97,7 +97,7 @@ class TagSerializer(serializers.ModelSerializer):
         # get or create Nametag
         request = self.context.get("view").request
         create_session_if_dne(request)
-        tag, _ = Tag.objects.get_or_create(
+        tag = Tag.objects.create(
             nametag=validated_data.pop("nametag"),
             address=address,
             created_by_session_id=request.session.session_key
