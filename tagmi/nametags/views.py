@@ -4,8 +4,9 @@ Views for the nametags application.
 # std lib imports
 
 # third party imports
-from rest_framework import generics
+from rest_framework import generics, mixins
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
 
 # our imports
 from .models import Tag, Vote
@@ -20,6 +21,33 @@ class TagListCreate(generics.ListCreateAPIView):
     def get_queryset(self):
         queryset = Tag.objects.filter(address=self.kwargs['address'].lower())
         return queryset
+
+
+class VoteCreateListUpdateDelete(mixins.ListModelMixin,
+                                 mixins.CreateModelMixin,
+                                 mixins.UpdateModelMixin,
+                                 mixins.DestroyModelMixin,
+                                 generics.GenericAPIView):
+    """ View that allows retrieving, creating, updating, deleting Votes. """
+
+    serializer_class = serializers.VoteSerializer
+    queryset = Vote.objects.all()
+    lookup_url_kwarg = "tag_id"
+
+    def get_object(self, *args, **kwargs):
+        """ Returns a vote instance that was created by the user, or 404. """
+        session_key = self.request.session.session_key
+        self.kwargs["tag"] = self.kwargs["tag_id"]
+        self.kwargs["created_by_session_id"] = session_key
+        return super().get_object(*args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        queryset = Vote.objects.none()
+        serializer = self.get_serializer(queryset)
+        return Response(serializer.data)
+
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
 
 
 class VoteListCreate(generics.ListCreateAPIView):

@@ -17,20 +17,42 @@ class VoteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Vote
-        fields = ["id", "value", "owned"]
+        fields = ["upvotes", "downvotes", "userVoteChoice", "value"]
 
-    owned = serializers.SerializerMethodField('get_is_owned_by')
+    value = serializers.BooleanField(write_only=True)
+    upvotes = serializers.SerializerMethodField('get_upvotes_count')
+    downvotes = serializers.SerializerMethodField('get_downvotes_count')
+    userVoteChoice = serializers.SerializerMethodField('get_user_vote_choice')
 
-    def get_is_owned_by(self, obj):
+    def get_user_vote_choice(self, obj):
         """
-        Returns True if the Vote instance was created by the requestor.
+        Returns the Vote value if the Vote was created by the requestor.
+        Returns None if the Vote was not created by the requestor.
         """
         session_id = self.context['request'].session.session_key
-        vote = obj
+        tag_id = self.context['view'].kwargs.get("tag_id", None)
 
-        # True if vote was created by the requestor
-        return session_id == vote.created_by_session_id \
-            and vote.created_by_session_id is not None
+        # TODO how to handle listing of nametags when there is no tag_id
+
+        # handle GET votes case
+        user_vote = Vote.objects.filter(
+            tag=tag_id,
+            created_by_session_id=session_id
+        ).first()
+        if user_vote is None:
+            return None
+        
+        return user_vote.value
+
+    def get_upvotes_count(self, obj):
+        # TODO how to handle listing of nametags when there is no tag_id
+        tag_id = self.context['view'].kwargs.get("tag_id", None)
+        return Vote.objects.filter(tag=tag_id, value=True).count()
+
+    def get_downvotes_count(self, obj):
+        # TODO how to handle listing of nametags when there is no tag_id
+        tag_id = self.context['view'].kwargs.get("tag_id", None)
+        return Vote.objects.filter(tag=tag_id, value=False).count()
 
     def create(self, validated_data):
         # get Tag id from the URL

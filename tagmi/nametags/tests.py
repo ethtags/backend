@@ -1,7 +1,15 @@
 """
 Module containing tests for the nametags application.
+# TODO
+  test returning aggregate upvotes/downvotes of a nametag
+    instead of list of vote objects
+  test sorting nametags by net upvotes
+  test returning userVoteChoice on votes object
+  test returning owned field on nametags
+  rename session_id to session_key
 """
 # std lib imports
+import json
 
 # third part imports
 from rest_framework import status
@@ -454,36 +462,34 @@ class VoteTests(APITestCase):
 
         # make assertions
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)
-        self.assertEqual(response.data[0]["value"], True)
-        self.assertEqual(response.data[1]["value"], True)
-        self.assertEqual(response.data[2]["value"], True)
+        self.assertEqual(response.data["upvotes"], 3)
+        self.assertEqual(response.data["downvotes"], 0)
 
-    def test_list_votes_owned_field(self):
+    def test_list_votes_vote_choice_field(self):
         """
-        Assert that listing votes of a nametag returns an
-        "owned" field on the vote, which is True if the
-        requesting user created the Vote, and False otherwise.
+        Assert that listing votes of a nametag returns a
+        "userVoteChoice" field which is
+            null if the requestor hasn't voted on the nametag.
+            true if the requestor upvoted the nametag.
+            false if the requestor downvoted the nametag.
         """
         # set up test
-        # create two upvotes in addition to the setUp method
-        self.client.cookies.clear()  # refresh cookies to act as a new user
-        self.client.post(self.urls["create"], self.req_data)
-        self.client.cookies.clear()  # refresh cookies to act as a new user
-        self.client.post(self.urls["create"], self.req_data)
-
-        # make request
         # note that cookies aren't cleared before this request, therefore
-        # the user is the same as the one that created the final vote
-        response = self.client.get(self.urls["list"])  # list votes for nametag
+        # the user is the same as the one that created
+        # the nametag and auto-upvote in the setUp method
+        response = self.client.get(self.urls["list"])
+        self.assertEqual(response.data["userVoteChoice"], True)
 
-        # make assertions
-        # assert that Owned is True on the last vote that was created
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 3)
-        self.assertEqual(response.data[0]["id"], 1)
-        self.assertEqual(response.data[0]["owned"], False)
-        self.assertEqual(response.data[1]["id"], 2)
-        self.assertEqual(response.data[1]["owned"], False)
-        self.assertEqual(response.data[2]["id"], 3)
-        self.assertEqual(response.data[2]["owned"], True)
+        # create a downvote as a new user and
+        # assert that userVoteChoice is False 
+        self.client.cookies.clear()  # refresh cookies to act as a new user
+        self.req_data["value"] = False
+        self.client.post(self.urls["create"], self.req_data)
+        response = self.client.get(self.urls["list"])
+        self.assertEqual(response.data["userVoteChoice"], False)
+
+        # list votes as a new user that hasn't voted and
+        # assert that userVoteChoice is null
+        self.client.cookies.clear()  # refresh cookies to act as a new user
+        response = self.client.get(self.urls["list"])
+        self.assertEqual(response.data["userVoteChoice"], None)
