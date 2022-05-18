@@ -9,7 +9,6 @@ Module containing tests for the nametags application.
   rename session_id to session_key
 """
 # std lib imports
-import json
 
 # third part imports
 from rest_framework import status
@@ -273,15 +272,15 @@ class NametagsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)  # two tags
         self.assertEqual(
-            response.data[0]["votes"][0]["value"],
-            True
+            response.data[0]["votes"]["upvotes"],
+            1
         )
         self.assertEqual(
-            response.data[1]["votes"][0]["value"],
-            True
+            response.data[1]["votes"]["upvotes"],
+            1
         )
         self.assertEqual(
-            response.data[1]["votes"][0]["owned"],
+            response.data[1]["votes"]["userVoteChoice"],
             True
         )
 
@@ -312,9 +311,8 @@ class VoteTests(APITestCase):
         self.urls = {}
         self.urls["list"] = f"/{self.test_addrs[0]}/tags/{self.tag_id}/votes/"
         self.urls["create"] = self.urls["list"]
-        self.urls["retrieve"] = f"/{self.test_addrs[0]}/votes/{self.vote_id}/"
-        self.urls["update"] = self.urls["retrieve"]
-        self.urls["delete"] = self.urls["retrieve"]
+        self.urls["update"] = self.urls["list"]
+        self.urls["delete"] = self.urls["list"]
 
         # common test request data
         self.req_data = {"value": True}
@@ -434,8 +432,8 @@ class VoteTests(APITestCase):
 
     def test_delete_vote_not_owner(self):
         """
-        Assert that a user cannot delete someone else's vote,
-        and that a 403 FORBIDDEN is returned.
+        Assert that a user gets a 404 NOT FOUND when they
+        try to delete their vote that does not exist.
         """
         # make request
         # try to delete the vote that was created in the setUp method
@@ -443,7 +441,7 @@ class VoteTests(APITestCase):
         response = self.client.delete(self.urls["delete"])
 
         # make assertions
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(len(Vote.objects.filter(id=self.vote_id)), 1)
 
     def test_list_votes_nametag(self):

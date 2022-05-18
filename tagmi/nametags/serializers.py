@@ -26,35 +26,73 @@ class VoteSerializer(serializers.ModelSerializer):
 
     def get_user_vote_choice(self, obj):
         """
-        Returns the Vote value if the Vote was created by the requestor.
-        Returns None if the Vote was not created by the requestor.
+        Returns True/False if the requestor has upvoted/downvoted.
+        Returns None if the requestor has not voted.
         """
         session_id = self.context['request'].session.session_key
         tag_id = self.context['view'].kwargs.get("tag_id", None)
 
-        # TODO how to handle listing of nametags when there is no tag_id
+        # VoteSerializer is nested and its parent is a ListSerializer, e.g.
+        #   - when doing a GET for a list of nametags
+        if isinstance(self.root, serializers.ListSerializer):
+            tag = self.parent._instance
+            user_vote = Vote.objects.filter(
+                tag=tag,
+                created_by_session_id=session_id
+            ).first()
 
-        # handle GET votes case
+            return getattr(user_vote, "value", None)
+
+        # VoteSerializer is not nested, e.g.
+        #   - when doing a GET for the votes of a specific nametag
         user_vote = Vote.objects.filter(
             tag=tag_id,
             created_by_session_id=session_id
         ).first()
-        if user_vote is None:
-            return None
-        
-        return user_vote.value
+
+        return getattr(user_vote, "value", None)
 
     def get_upvotes_count(self, obj):
-        # TODO how to handle listing of nametags when there is no tag_id
+        """
+        Return the total number of upvotes for a given nametag.
+        """
+        # VoteSerializer is nested and its parent is a ListSerializer, e.g.
+        #   - when doing a GET for a list of nametags
+        if isinstance(self.root, serializers.ListSerializer):
+            tag = self.parent._instance
+            return Vote.objects.filter(
+                tag=tag.id,
+                value=True
+            ).count()
+
+        # VoteSerializer is not nested, e.g.
+        #   - when doing a GET for the votes of a specific nametag
         tag_id = self.context['view'].kwargs.get("tag_id", None)
+
         return Vote.objects.filter(tag=tag_id, value=True).count()
 
     def get_downvotes_count(self, obj):
-        # TODO how to handle listing of nametags when there is no tag_id
+        """
+        Return the total number of downvotes for a given nametag.
+        """
+        # VoteSerializer is nested and its parent is a ListSerializer, e.g.
+        #   - when doing a GET for a list of nametags
+        if isinstance(self.root, serializers.ListSerializer):
+            tag = self.parent._instance
+            return Vote.objects.filter(
+                tag=tag.id,
+                value=False
+            ).count()
+
+        # VoteSerializer is not nested, e.g.
+        #   - when doing a GET for the votes of a specific nametag
         tag_id = self.context['view'].kwargs.get("tag_id", None)
         return Vote.objects.filter(tag=tag_id, value=False).count()
 
     def create(self, validated_data):
+        """
+        Create a Vote and return the created object.
+        """
         # get Tag id from the URL
         tag_id = self.context.get("view").kwargs["tag_id"]
 
@@ -82,7 +120,9 @@ class VoteSerializer(serializers.ModelSerializer):
         return vote
 
     def update(self, instance, validated_data):
-
+        """
+        Update an existing vote.
+        """
         # only vote creator can update the vote
         session_id = self.context.get("view").request.session.session_key
         if instance.created_by_session_id != session_id:
@@ -99,7 +139,6 @@ class TagSerializer(serializers.ModelSerializer):
     """ Serializer for the Tag model. """
 
     votes = VoteSerializer(
-        many=True,
         read_only=True
     )
 
@@ -133,3 +172,13 @@ class TagSerializer(serializers.ModelSerializer):
         )
 
         return tag
+
+    def to_representation(self, instance):
+        """
+        Overrides the parent to_representation.
+        Adds an _instance attribute to the TagSerializer so that its child
+        serializers can access specific instances TagSerializer is a
+        ListSerializer, i.e. many=True.
+        """
+        self._instance = instance
+        return super(TagSerializer, self).to_representation(instance)

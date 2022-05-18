@@ -49,6 +49,16 @@ class VoteCreateListUpdateDelete(mixins.ListModelMixin,
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
 
+    def destroy(self, request, *args, **kwargs):
+        # delete the instance
+        instance = self.get_object()
+        instance.delete()
+
+        # return the updated representation of votes
+        queryset = Vote.objects.none()
+        serializer = self.get_serializer(queryset)
+        return Response(serializer.data)
+
 
 class VoteListCreate(generics.ListCreateAPIView):
     """ View that allows listing and creating Votes. """

@@ -13,5 +13,4 @@ from .views import TagListCreate, VoteGetUpdateDelete, VoteListCreate, VoteCreat
 urlpatterns = [
     path('<str:address>/tags/', TagListCreate.as_view()),
     path('<str:address>/tags/<int:tag_id>/votes/', VoteCreateListUpdateDelete.as_view()),
-    path('<str:address>/votes/<int:vote_id>/', VoteGetUpdateDelete.as_view()),
 ]
