@@ -1,8 +1,6 @@
 """
 Module containing tests for the nametags application.
 # TODO
-  test returning aggregate upvotes/downvotes of a nametag
-    instead of list of vote objects
   test sorting nametags by net upvotes
   test returning userVoteChoice on votes object
   test returning owned field on nametags
@@ -403,8 +401,8 @@ class VoteTests(APITestCase):
 
     def test_update_vote_not_owner(self):
         """
-        Assert that a user cannot change someone else's vote,
-        and that a 403 FORBIDDEN is returned.
+        Assert that a user cannot update a vote if they haven't created one.
+        Assert that a 404 NOT FOUND is returned.
         """
         # make request
         # try to update the vote created in the setUp method
@@ -413,7 +411,7 @@ class VoteTests(APITestCase):
         response = self.client.put(self.urls["update"], self.req_data)
 
         # make assertions
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(Vote.objects.get(id=self.vote_id).value, True)
 
     def test_delete_vote_owner(self):
@@ -424,7 +422,7 @@ class VoteTests(APITestCase):
         response = self.client.delete(self.urls["delete"])
 
         # make assertions
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # assert that the vote no longer exists
         votes = Vote.objects.filter(id=self.vote_id)
@@ -432,8 +430,8 @@ class VoteTests(APITestCase):
 
     def test_delete_vote_not_owner(self):
         """
-        Assert that a user gets a 404 NOT FOUND when they
-        try to delete their vote that does not exist.
+        Assert that a user cannot delete a vote if they haven't created one.
+        Assert that a 404 NOT FOUND is returned.
         """
         # make request
         # try to delete the vote that was created in the setUp method

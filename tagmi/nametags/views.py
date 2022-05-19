@@ -4,6 +4,7 @@ Views for the nametags application.
 # std lib imports
 
 # third party imports
+from django.http import Http404
 from rest_framework import generics, mixins
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -35,29 +36,58 @@ class VoteCreateListUpdateDelete(mixins.ListModelMixin,
     lookup_url_kwarg = "tag_id"
 
     def get_object(self, *args, **kwargs):
-        """ Returns a vote instance that was created by the user, or 404. """
+        """
+        Returns a vote instance that was created
+        by the requestor, or 404.
+        """
+
         session_key = self.request.session.session_key
+
+        # 404 if the requestor doesn't have a session
+        # meaning they haven't created anything before
+        if session_key is None:
+            raise Http404
+
+        # fetch an object with the given session and tag id
         self.kwargs["tag"] = self.kwargs["tag_id"]
         self.kwargs["created_by_session_id"] = session_key
         return super().get_object(*args, **kwargs)
 
     def get(self, request, *args, **kwargs):
+        """ Return the aggregate votes for the given nametag id. """
+
         queryset = Vote.objects.none()
         serializer = self.get_serializer(queryset)
         return Response(serializer.data)
 
     def post(self, request, *args, **kwargs):
+        """ Create a vote for the given nametag id. """
+
         return self.create(request, *args, **kwargs)
 
-    def destroy(self, request, *args, **kwargs):
-        # delete the instance
+    def put(self, request, *args, **kwargs):
+        """
+        Update the requestor's vote.
+        Note that the check for whether a vote was
+        created by the requestor is done in get_object.
+        """
+
+        return self.update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        """
+        Delete the requestor's vote.
+        Note that the check for whether a vote was
+        created by the requestor is done in get_object.
+        """
+        # get instance
         instance = self.get_object()
+
+        # do delete
         instance.delete()
 
-        # return the updated representation of votes
-        queryset = Vote.objects.none()
-        serializer = self.get_serializer(queryset)
-        return Response(serializer.data)
+        # return the updated aggregate representation of votes
+        return self.get(request, *args, **kwargs)
 
 
 class VoteListCreate(generics.ListCreateAPIView):
