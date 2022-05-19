@@ -477,7 +477,7 @@ class VoteTests(APITestCase):
         self.assertEqual(response.data["userVoteChoice"], True)
 
         # create a downvote as a new user and
-        # assert that userVoteChoice is False 
+        # assert that userVoteChoice is False
         self.client.cookies.clear()  # refresh cookies to act as a new user
         self.req_data["value"] = False
         self.client.post(self.urls["create"], self.req_data)

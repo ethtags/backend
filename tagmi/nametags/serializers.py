@@ -24,7 +24,7 @@ class VoteSerializer(serializers.ModelSerializer):
     downvotes = serializers.SerializerMethodField('get_downvotes_count')
     userVoteChoice = serializers.SerializerMethodField('get_user_vote_choice')
 
-    def get_user_vote_choice(self, obj):
+    def get_user_vote_choice(self, _):
         """
         Returns True/False if the requestor has upvoted/downvoted.
         Returns None if the requestor has not voted.
@@ -35,7 +35,7 @@ class VoteSerializer(serializers.ModelSerializer):
         # VoteSerializer is nested and its parent is a ListSerializer, e.g.
         #   - when doing a GET for a list of nametags
         if isinstance(self.root, serializers.ListSerializer):
-            tag = self.parent._instance
+            tag = self.parent.instance
             user_vote = Vote.objects.filter(
                 tag=tag,
                 created_by_session_id=session_id
@@ -52,14 +52,14 @@ class VoteSerializer(serializers.ModelSerializer):
 
         return getattr(user_vote, "value", None)
 
-    def get_upvotes_count(self, obj):
+    def get_upvotes_count(self, _):
         """
         Return the total number of upvotes for a given nametag.
         """
         # VoteSerializer is nested and its parent is a ListSerializer, e.g.
         #   - when doing a GET for a list of nametags
         if isinstance(self.root, serializers.ListSerializer):
-            tag = self.parent._instance
+            tag = self.parent.instance
             return Vote.objects.filter(
                 tag=tag.id,
                 value=True
@@ -71,14 +71,14 @@ class VoteSerializer(serializers.ModelSerializer):
 
         return Vote.objects.filter(tag=tag_id, value=True).count()
 
-    def get_downvotes_count(self, obj):
+    def get_downvotes_count(self, _):
         """
         Return the total number of downvotes for a given nametag.
         """
         # VoteSerializer is nested and its parent is a ListSerializer, e.g.
         #   - when doing a GET for a list of nametags
         if isinstance(self.root, serializers.ListSerializer):
-            tag = self.parent._instance
+            tag = self.parent.instance
             return Vote.objects.filter(
                 tag=tag.id,
                 value=False
@@ -180,5 +180,5 @@ class TagSerializer(serializers.ModelSerializer):
         serializers can access specific instances TagSerializer is a
         ListSerializer, i.e. many=True.
         """
-        self._instance = instance
-        return super(TagSerializer, self).to_representation(instance)
+        self.instance = instance
+        return super().to_representation(instance)
