@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 # our imports
-from .models import Address, Tag
+from .models import Address, Tag, Vote
 
 
 class TagTests(TestCase):
@@ -117,3 +117,44 @@ class AddressTests(TestCase):
 
         err_msg = error.exception.messages[0]
         self.assertIn("must be hex", err_msg)
+
+
+class VoteTests(TestCase):
+    """ Class that tests the Vote model. """
+
+    def setUp(self):
+        """
+        Runs before each test.
+        """
+        self.test_addr = "0x4622BeF7d6C5f7f1ACC479B764688DC3E7316d68"
+
+    def test_vote_unique_together(self):
+        """
+        Assert that two votes cannot be created by the same
+        user for the same Tag.
+        """
+        # prepare test
+        tag_value = "Tag One"
+        test_uuid = uuid.uuid4()
+        address = Address.objects.create(
+            pubkey=self.test_addr
+        )
+        tag = Tag.objects.create(
+            address=address,
+            nametag=tag_value,
+            created_by_session_id=test_uuid
+        )
+
+        # assert that creating two votes for
+        # the same nametag by the same user raises an exception
+        Vote.objects.create(
+            tag=tag,
+            value=True,
+            created_by_session_id=test_uuid
+        )
+        with self.assertRaises(ValidationError):
+            Vote.objects.create(
+                tag=tag,
+                value=False,
+                created_by_session_id=test_uuid
+            )
