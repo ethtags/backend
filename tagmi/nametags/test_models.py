@@ -2,6 +2,7 @@
 Module that tests the nametags models.
 """
 # std lib imports
+import uuid
 
 # third party imports
 from django.core.exceptions import ValidationError
@@ -35,7 +36,8 @@ class TagTests(TestCase):
         )
         Tag.objects.create(
             address=address,
-            nametag=tag_value
+            nametag=tag_value,
+            created_by_session_id=uuid.uuid4()
         )
 
         # assert that creating new nametag with

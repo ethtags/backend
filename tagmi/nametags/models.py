@@ -64,7 +64,9 @@ class Tag(models.Model):
         blank=False,
     )
     created_by_session_id = models.CharField(
-        max_length=40, null=True, blank=True
+        max_length=40,
+        blank=False,
+        null=False
     )
 
     def validate_unique(self, *args, **kwargs):
@@ -98,5 +100,7 @@ class Vote(models.Model):
         related_name="votes"
     )
     created_by_session_id = models.CharField(
-        max_length=40, null=True, blank=True
+        max_length=40,
+        blank=False,
+        null=False
     )

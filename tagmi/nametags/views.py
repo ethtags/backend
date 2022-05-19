@@ -4,6 +4,7 @@ Views for the nametags application.
 # std lib imports
 
 # third party imports
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import Http404
 from rest_framework import generics, mixins
 from rest_framework.exceptions import PermissionDenied
@@ -34,24 +35,23 @@ class VoteCreateListUpdateDelete(mixins.ListModelMixin,
     serializer_class = serializers.VoteSerializer
     queryset = Vote.objects.all()
     lookup_url_kwarg = "tag_id"
+    lookup_field = "tag"
 
     def get_object(self, *args, **kwargs):
         """
         Returns a vote instance that was created
         by the requestor, or 404.
         """
-
+        # get session key for vote lookup
         session_key = self.request.session.session_key
 
-        # 404 if the requestor doesn't have a session
-        # meaning they haven't created anything before
-        if session_key is None:
-            raise Http404
-
-        # fetch an object with the given session and tag id
-        self.kwargs["tag"] = self.kwargs["tag_id"]
-        self.kwargs["created_by_session_id"] = session_key
-        return super().get_object(*args, **kwargs)
+        try:
+            return Vote.objects.get(
+                tag=self.kwargs["tag_id"],
+                created_by_session_id=session_key
+            )
+        except ObjectDoesNotExist as dne:
+            raise Http404 from dne
 
     def get(self, request, *args, **kwargs):
         """ Return the aggregate votes for the given nametag id. """
