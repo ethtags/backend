@@ -138,13 +138,26 @@ class VoteSerializer(serializers.ModelSerializer):
 class TagSerializer(serializers.ModelSerializer):
     """ Serializer for the Tag model. """
 
+    class Meta:
+        model = Tag
+        fields = ["id", "nametag", "votes", "createdByUser"]
+
     votes = VoteSerializer(
         read_only=True
     )
+    createdByUser = serializers.SerializerMethodField('get_created_by_user')
 
-    class Meta:
-        model = Tag
-        fields = ["id", "nametag", "votes"]
+    def get_created_by_user(self, obj):
+        """
+        Returns True if the requestor created the nametag.
+        Returns False otherwise.
+        """
+        session_key = self.context['request'].session.session_key
+
+        if obj.created_by_session_id == session_key:
+            return True
+
+        return False
 
     def create(self, validated_data):
         # get address from the URL

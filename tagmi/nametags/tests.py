@@ -2,8 +2,6 @@
 Module containing tests for the nametags application.
 # TODO
   test sorting nametags by net upvotes
-  test returning userVoteChoice on votes object
-  test returning owned field on nametags
   rename session_id to session_key
 """
 # std lib imports
@@ -281,6 +279,34 @@ class NametagsTests(APITestCase):
             response.data[1]["votes"]["userVoteChoice"],
             True
         )
+
+    def test_list_nametags_created_by_user(self):
+        """
+        Assert that the "createdByUser" field on a nametag is
+        True/False if the requesting user created that nametag.
+        """
+        # set up test
+        # create nametags for addresses one and two
+        data = {"nametag": "Nametag One"}
+        self.client.post(self.urls["create"], data)
+
+        data = {"nametag": "Address One Nametag Two"}
+        self.client.post(self.urls["create"], data)
+
+        # list nametags as the user that created the nametags
+        # and assert that createdByUser is True
+        response = self.client.get(self.urls["list"])
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]["createdByUser"], True)
+        self.assertEqual(response.data[1]["createdByUser"], True)
+
+        # list nametags as a new user that did not created the nametags
+        # and assert that createdByUser is False
+        self.client.cookies.clear()
+        response = self.client.get(self.urls["list"])
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]["createdByUser"], False)
+        self.assertEqual(response.data[1]["createdByUser"], False)
 
 
 class VoteTests(APITestCase):
