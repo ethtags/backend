@@ -1,7 +1,6 @@
 """
 Module containing tests for the nametags application.
 # TODO
-  test sorting nametags by net upvotes
   rename session_id to session_key
 """
 # std lib imports
@@ -290,7 +289,7 @@ class NametagsTests(APITestCase):
         data = {"nametag": "Nametag One"}
         self.client.post(self.urls["create"], data)
 
-        data = {"nametag": "Address One Nametag Two"}
+        data = {"nametag": "Nametag Two"}
         self.client.post(self.urls["create"], data)
 
         # list nametags as the user that created the nametags
@@ -307,6 +306,51 @@ class NametagsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data[0]["createdByUser"], False)
         self.assertEqual(response.data[1]["createdByUser"], False)
+
+    def test_list_nametags_sorted(self):
+        """
+        Assert that listing nametags returns them sorted
+        from highest to lowest net upvote count.
+        """
+        # set up test
+        # create three nametags
+        data = {"nametag": "Nametag One"}
+        one = self.client.post(self.urls["create"], data)
+        data = {"nametag": "Nametag Two"}
+        two = self.client.post(self.urls["create"], data)
+        data = {"nametag": "Nametag Three"}
+        three = self.client.post(self.urls["create"], data)
+
+        # upvote Nametag Three 3 times
+        # upvote Nametag Two 3 times and downvote once
+        # upvote Nametag One 3 times and downvote twice
+        self._vote_tag_n_times(self.test_addrs[0], one.data["id"], True, 3)
+        self._vote_tag_n_times(self.test_addrs[0], two.data["id"], True, 3)
+        self._vote_tag_n_times(self.test_addrs[0], two.data["id"], False, 1)
+        self._vote_tag_n_times(self.test_addrs[0], three.data["id"], True, 3)
+        self._vote_tag_n_times(self.test_addrs[0], three.data["id"], False, 2)
+
+        # GET the nametags
+        response = self.client.get(self.urls["list"])
+
+        # assert that Nametag Three is first
+        # assert that Nametag Two is second
+        # assert that Nametag One is third
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data[0]["id"], 3)
+        self.assertEqual(response.data[1]["id"], 2)
+        self.assertEqual(response.data[2]["id"], 1)
+
+    def _vote_tag_n_times(self, address, tag_id, vote_value, num):
+        """
+        Upvotes/Downvotes the given address/nametag num amount of times.
+        vote_value should be True for upvote, False for downvote.
+        """
+        url = f"/{address}/tags/{tag_id}/votes/"
+        for _ in range(num):
+            self.client.cookies.clear()
+            resp = self.client.post(url, {"value": vote_value})
+            assert resp.status_code == 201
 
 
 class VoteTests(APITestCase):

@@ -5,6 +5,7 @@ Views for the nametags application.
 
 # third party imports
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Case, IntegerField, Sum, When
 from django.http import Http404
 from rest_framework import generics, mixins
 from rest_framework.exceptions import PermissionDenied
@@ -21,15 +22,37 @@ class TagListCreate(generics.ListCreateAPIView):
     serializer_class = serializers.TagSerializer
 
     def get_queryset(self):
-        queryset = Tag.objects.filter(address=self.kwargs['address'].lower())
+        """
+        Returns the queryset used for listing tags.
+        """
+        # query for all tags matching the address given in the url
+        queryset = Tag.objects.filter(address=self.kwargs["address"].lower())
+
+        # annotate the tags so that they can be sorted by net upvote count
+        # https://docs.djangoproject.com/en/4.0/topics/db/aggregation/
+        # https://docs.djangoproject.com/en/4.0/ref/models/conditional-expressions/
+        queryset = queryset.annotate(
+            net_upvotes=Sum(
+                Case(
+                    When(votes__value=True, then=1),
+                    When(votes__value=False, then=-1),
+                    output_field=IntegerField()
+                )
+            )
+        )
+
+        # sort the queryset by net upvote count (upvotes minus downvotes)
+        queryset = queryset.order_by("net_upvotes")
+
         return queryset
 
 
-class VoteCreateListUpdateDelete(mixins.ListModelMixin,
-                                 mixins.CreateModelMixin,
-                                 mixins.UpdateModelMixin,
-                                 mixins.DestroyModelMixin,
-                                 generics.GenericAPIView):
+class VoteCreateListUpdateDelete(
+        mixins.ListModelMixin,
+        mixins.CreateModelMixin,
+        mixins.UpdateModelMixin,
+        mixins.DestroyModelMixin,
+        generics.GenericAPIView):
     """ View that allows retrieving, creating, updating, deleting Votes. """
 
     serializer_class = serializers.VoteSerializer
