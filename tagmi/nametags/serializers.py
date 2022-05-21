@@ -188,9 +188,9 @@ class TagSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         """
-        Overrides the parent to_representation.
-        Adds an _instance attribute to the TagSerializer so that its child
-        serializers can access specific instances TagSerializer is a
+        Overrides to_representation.
+        Adds an instance attribute to the TagSerializer so that its child
+        serializers can access specific instances when TagSerializer is a
         ListSerializer, i.e. many=True.
         """
         self.instance = instance
