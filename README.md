@@ -12,7 +12,7 @@
 ## API Schema
 
 Notes:
- * Client should support cookies. The backend sets a cookie with a session id after a user creates a nametag or vote. This is then used by the backend to determine whether a user can edit a vote, delete a vote, etc.  
+ * Client should support persistent cookies. The backend sets a cookie with a session id after a user creates a nametag or vote. This is then used by the backend to determine whether a user can edit a vote, delete a vote, etc.  
 
 ```
 GET     /{address}/tags/
@@ -61,7 +61,7 @@ GET     /{address}/tags/
     
 
 GET     /{address}/tags/{tag_id}/votes/
-    Returns all votes for a given address and nametag
+    Returns the count of all votes for a given address and nametag.
 
     Request Body
         {}
@@ -88,7 +88,7 @@ POST    /{address}/tags/{tag_id}/votes/
 
     Response Status
         201 if successful
-        400 if invalid request data
+        400 if invalid request data or if user vote already exists
         404 if tag_id not found
 
     Response Body
@@ -99,8 +99,8 @@ POST    /{address}/tags/{tag_id}/votes/
         }
 
 
-UPDATE  /{address}/tags/{tag_id}/votes/
-    Update a vote for a given address and nametag, must have been created by the requestor
+PUT     /{address}/tags/{tag_id}/votes/
+    Update a vote for a given address and nametag, must have been created by the requestor. If the requestor clears cookies (changes sessionid) then they will not be able to update their previous vote.
     Request Body
         {
             "value": false
@@ -120,7 +120,7 @@ UPDATE  /{address}/tags/{tag_id}/votes/
 
 
 DELETE  /{address}/tags/{tag_id}/votes/
-    Delete a vote for a given address and nametag, must have been created by the requestor
+    Delete a vote for a given address and nametag, must have been created by the requestor. If the requestor clears cookies (changes sessionid) then they will not be able to delete their previous vote.
 
     Request Body
         {}
