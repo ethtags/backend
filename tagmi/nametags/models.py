@@ -64,7 +64,9 @@ class Tag(models.Model):
         blank=False,
     )
     created_by_session_id = models.CharField(
-        max_length=40, null=True, blank=True
+        max_length=40,
+        blank=False,
+        null=False
     )
 
     def validate_unique(self, *args, **kwargs):
@@ -73,11 +75,12 @@ class Tag(models.Model):
         super().validate_unique(*args, **kwargs)
 
         # check for existing nametag
-        exists = Tag.objects.filter(
+        tags = Tag.objects.filter(
             address=self.address,
             nametag=self.nametag
         )
-        if len(exists) > 0:
+        # exists and is not an update operation
+        if tags.exists() and tags.first().id != self.id:
             raise ValidationError("Nametag already exists for that address.")
 
     def save(self, *args, **kwargs):
@@ -98,5 +101,30 @@ class Vote(models.Model):
         related_name="votes"
     )
     created_by_session_id = models.CharField(
-        max_length=40, null=True, blank=True
+        max_length=40,
+        blank=False,
+        null=False
     )
+
+    def validate_unique(self, *args, **kwargs):
+        """ Validate unique constraints. """
+
+        super().validate_unique(*args, **kwargs)
+
+        # check for vote with the same nametag and creator
+        votes = Vote.objects.filter(
+            tag=self.tag,
+            created_by_session_id=self.created_by_session_id
+        )
+
+        # exists and is not an update operation
+        if votes.exists() and votes.first().id != self.id:
+            raise ValidationError(
+                "Vote already exists for that nametag and user."
+            )
+
+    def save(self, *args, **kwargs):
+        """ Custom business logic on write. """
+
+        self.full_clean()
+        super().save(*args, **kwargs)
