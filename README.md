@@ -22,7 +22,7 @@ GET     /{address}/tags/
         {}
 
     Response Status
-        200 if success
+        200 if successful
         404 if address not found
 
     Response Body
@@ -58,7 +58,31 @@ GET     /{address}/tags/
                 "createdByUser": false
             }
         ]
+
+
+POST    /{address}/tags/
+    Creates a new nametag for a given address and auto-upvotes it.
     
+    Request Body  
+        {
+            "nametag": "Test Address One"
+        }
+
+    Response Status
+        201 if successful
+        400 if bad address or nametag
+
+    Response Body  
+        {
+            "id": 1,
+            "nametag": "Test Address One",
+            "votes": {
+                "upvotes": 1,
+                "downvotes": 0,
+                "userVoteChoice": true
+            },
+        }
+
 
 GET     /{address}/tags/{tag_id}/votes/
     Returns the count of all votes for a given address and nametag.
