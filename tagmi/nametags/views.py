@@ -41,17 +41,17 @@ class TagListCreate(generics.ListCreateAPIView):
             )
         )
 
-        # sort the queryset by net upvote count (upvotes minus downvotes)
-        queryset = queryset.order_by("net_upvotes")
+        # sort the queryset by descending net upvote count
+        # (upvotes minus downvotes) from greatest to least
+        queryset = queryset.order_by("-net_upvotes")
 
         return queryset
 
 
-class VoteCreateListUpdateDelete(
+class VoteCreateListUpdate(
         mixins.ListModelMixin,
         mixins.CreateModelMixin,
         mixins.UpdateModelMixin,
-        mixins.DestroyModelMixin,
         generics.GenericAPIView):
     """ View that allows retrieving, creating, updating, deleting Votes. """
 
@@ -96,47 +96,3 @@ class VoteCreateListUpdateDelete(
         """
 
         return self.update(request, *args, **kwargs)
-
-    def delete(self, request, *args, **kwargs):
-        """
-        Delete the requestor's vote.
-        Note that the check for whether a vote was
-        created by the requestor is done in get_object.
-        """
-        # get instance
-        instance = self.get_object()
-
-        # do delete
-        instance.delete()
-
-        # return the updated aggregate representation of votes
-        return self.get(request, *args, **kwargs)
-
-
-class VoteListCreate(generics.ListCreateAPIView):
-    """ View that allows listing and creating Votes. """
-
-    serializer_class = serializers.VoteSerializer
-    queryset = Vote.objects.all()
-    lookup_url_kwarg = "tag_id"
-
-
-class VoteGetUpdateDelete(generics.RetrieveUpdateDestroyAPIView):
-    """ View that allows listing and creating Votes. """
-
-    serializer_class = serializers.VoteSerializer
-    queryset = Vote.objects.all()
-    lookup_url_kwarg = "vote_id"
-
-    def destroy(self, request, *args, **kwargs):
-        """
-        View for handling HTTP DELETE.
-        """
-        vote = Vote.objects.get(id=self.kwargs["vote_id"])
-
-        # only vote creator can delete the vote
-        if request.session.session_key != vote.created_by_session_id:
-            raise PermissionDenied("Only vote creator can delete vote.")
-
-        # perform delete
-        return super().destroy(request, *args, **kwargs)

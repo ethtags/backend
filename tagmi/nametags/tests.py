@@ -310,7 +310,7 @@ class NametagsTests(APITestCase):
     def test_list_nametags_sorted(self):
         """
         Assert that listing nametags returns them sorted
-        from highest to lowest net upvote count.
+        from greatest to least net upvote count.
         """
         # set up test
         # create three nametags
@@ -324,11 +324,11 @@ class NametagsTests(APITestCase):
         # upvote Nametag Three 3 times
         # upvote Nametag Two 3 times and downvote once
         # upvote Nametag One 3 times and downvote twice
-        self._vote_tag_n_times(self.test_addrs[0], one.data["id"], True, 3)
+        self._vote_tag_n_times(self.test_addrs[0], three.data["id"], True, 3)
         self._vote_tag_n_times(self.test_addrs[0], two.data["id"], True, 3)
         self._vote_tag_n_times(self.test_addrs[0], two.data["id"], False, 1)
-        self._vote_tag_n_times(self.test_addrs[0], three.data["id"], True, 3)
-        self._vote_tag_n_times(self.test_addrs[0], three.data["id"], False, 2)
+        self._vote_tag_n_times(self.test_addrs[0], one.data["id"], True, 3)
+        self._vote_tag_n_times(self.test_addrs[0], one.data["id"], False, 2)
 
         # GET the nametags
         response = self.client.get(self.urls["list"])
@@ -380,7 +380,6 @@ class VoteTests(APITestCase):
         self.urls["list"] = f"/{self.test_addrs[0]}/tags/{self.tag_id}/votes/"
         self.urls["create"] = self.urls["list"]
         self.urls["update"] = self.urls["list"]
-        self.urls["delete"] = self.urls["list"]
 
         # common test request data
         self.req_data = {"value": True}
@@ -484,34 +483,6 @@ class VoteTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(Vote.objects.get(id=self.vote_id).value, True)
 
-    def test_delete_vote_owner(self):
-        """
-        Assert that the creator of a Vote can delete it.
-        """
-        # make request
-        response = self.client.delete(self.urls["delete"])
-
-        # make assertions
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # assert that the vote no longer exists
-        votes = Vote.objects.filter(id=self.vote_id)
-        self.assertEqual(len(votes), 0)
-
-    def test_delete_vote_not_owner(self):
-        """
-        Assert that a user cannot delete a vote if they haven't created one.
-        Assert that a 404 NOT FOUND is returned.
-        """
-        # make request
-        # try to delete the vote that was created in the setUp method
-        self.client.cookies.clear()  # refresh cookies to act as a new user
-        response = self.client.delete(self.urls["delete"])
-
-        # make assertions
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(len(Vote.objects.filter(id=self.vote_id)), 1)
-
     def test_list_votes_nametag(self):
         """
         Assert that all votes for a specific nametag are returned.
@@ -535,7 +506,7 @@ class VoteTests(APITestCase):
         """
         Assert that listing votes of a nametag returns a
         "userVoteChoice" field which is
-            null if the requestor hasn't voted on the nametag.
+            null if the requestor has voted on the nametag but undid it.
             true if the requestor upvoted the nametag.
             false if the requestor downvoted the nametag.
         """
@@ -554,8 +525,36 @@ class VoteTests(APITestCase):
         response = self.client.get(self.urls["list"])
         self.assertEqual(response.data["userVoteChoice"], False)
 
-        # list votes as a new user that hasn't voted and
+        # list votes as a new user that has undone their vote and
         # assert that userVoteChoice is null
-        self.client.cookies.clear()  # refresh cookies to act as a new user
+        self.req_data["value"] = None
+        self.client.put(self.urls["update"], self.req_data)
         response = self.client.get(self.urls["list"])
         self.assertEqual(response.data["userVoteChoice"], None)
+
+    def test_list_votes_user_voted_field(self):
+        """
+        Assert that listing votes of a nametag returns a
+        "userVoted" field which is
+            true if the requestor has voted or unvoted the nametag.
+            false if the requestor has never voted on the nametag before.
+        """
+        # set up test
+        # note that cookies aren't cleared before this request, therefore
+        # the user is the same as the one that created
+        # the nametag and auto-upvote in the setUp method
+        # assert that userVoted is True
+        response = self.client.get(self.urls["list"])
+        self.assertEqual(response.data["userVoted"], True)
+
+        # undo the vote and assert that userVoted is still True
+        self.req_data["value"] = None
+        self.client.post(self.urls["update"], self.req_data)
+        response = self.client.get(self.urls["list"])
+        self.assertEqual(response.data["userVoted"], True)
+
+        # list the nametags as a new user and
+        # assert that userVoted is False
+        self.client.cookies.clear()  # refresh cookies to act as a new user
+        response = self.client.get(self.urls["list"])
+        self.assertEqual(response.data["userVoted"], False)

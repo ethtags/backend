@@ -12,7 +12,7 @@
 ## API Schema
 
 Notes:
- * Client should support persistent cookies. The backend sets a cookie with a session id after a user creates a nametag or vote. This is then used by the backend to determine whether a user can edit a vote, delete a vote, etc.  
+ * Client should support persistent cookies. The backend sets a cookie with a session id after a user creates a nametag or vote. This is then used by the backend to determine whether a user can edit a vote, etc.  
 
 ```
 GET     /{address}/tags/
@@ -33,6 +33,7 @@ GET     /{address}/tags/
                 "votes": {
                     "upvotes": 2,
                     "downvotes": 0,
+                    "userVoted": true,
                     "userVoteChoice": true
                 },
                 "createdByUser": true
@@ -43,7 +44,19 @@ GET     /{address}/tags/
                 "votes": {
                     "upvotes": 2,
                     "downvotes": 1,
+                    "userVoted": true
                     "userVoteChoice": false
+                },
+                "createdByUser": false
+            },
+            {
+                "id": 4,
+                "nametag": "Address One Nametag Four",
+                "votes": {
+                    "upvotes": 2,
+                    "downvotes": 1,
+                    "userVoted": false
+                    "userVoteChoice": null
                 },
                 "createdByUser": false
             },
@@ -53,6 +66,7 @@ GET     /{address}/tags/
                 "votes": {
                     "upvotes": 1,
                     "downvotes": 1,
+                    "userVoted": true
                     "userVoteChoice": null
                 },
                 "createdByUser": false
@@ -79,6 +93,7 @@ POST    /{address}/tags/
             "votes": {
                 "upvotes": 1,
                 "downvotes": 0,
+                "userVoted": true,
                 "userVoteChoice": true
             },
         }
@@ -98,6 +113,7 @@ GET     /{address}/tags/{tag_id}/votes/
         {
             "upvotes": 0,
             "downvotes": 0,
+            "userVoted": true|false,
             "userVoteChoice": true|false|null
         }
 
@@ -119,6 +135,7 @@ POST    /{address}/tags/{tag_id}/votes/
         {
             "upvotes": 2,
             "downvotes": 0,
+            "userVoted": true,
             "userVoteChoice": true
         }
 
@@ -139,26 +156,8 @@ PUT     /{address}/tags/{tag_id}/votes/
         {
             "upvotes": 1,
             "downvotes": 1,
+            "userVoted": true,
             "userVoteChoice": false
-        }
-
-
-DELETE  /{address}/tags/{tag_id}/votes/
-    Delete a vote for a given address and nametag, must have been created by the requestor. If the requestor clears cookies (changes sessionid) then they will not be able to delete their previous vote.
-
-    Request Body
-        {}
-
-    Response Status
-        200 if successful
-        400 if invalid request data
-        404 if tag_id not found
-
-    Response Body
-        {
-            "upvotes": 1,
-            "downvotes": 0,
-            "userVoteChoice": null
         }
 ```
 
@@ -180,3 +179,8 @@ At the moment we're creating a session for a user when they create a new nametag
 ## Future Feature Considerations
  * Pagination for nametags
  * Recaptcha with https://github.com/llybin/drf-recaptcha 
+
+
+## TODO
+ * Fix bug: when creating a nametag, the response does not include the automatic 1 upvote
+ * Lock down the configuration before deploying to production. Search for # TODO comments in the code, as well as going through this https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/

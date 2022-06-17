@@ -17,12 +17,42 @@ class VoteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Vote
-        fields = ["upvotes", "downvotes", "userVoteChoice", "value"]
+        fields = [
+            "upvotes",
+            "downvotes",
+            "userVoted",
+            "userVoteChoice",
+            "value"
+        ]
 
-    value = serializers.BooleanField(write_only=True)
+    value = serializers.NullBooleanField(write_only=True)
     upvotes = serializers.SerializerMethodField('get_upvotes_count')
     downvotes = serializers.SerializerMethodField('get_downvotes_count')
+    userVoted = serializers.SerializerMethodField('get_user_voted')
     userVoteChoice = serializers.SerializerMethodField('get_user_vote_choice')
+
+    def get_user_voted(self, _):
+        """
+        Returns True/False if the requestor has voted before.
+        """
+        session_id = self.context['request'].session.session_key
+
+        # VoteSerializer is nested and its parent is a ListSerializer, e.g.
+        #   - when doing a GET for a list of nametags
+        if isinstance(self.root, serializers.ListSerializer):
+            tag = self.parent.instance
+            return Vote.objects.filter(
+                tag=tag,
+                created_by_session_id=session_id
+            ).exists()
+
+        # VoteSerializer is not nested, e.g.
+        #   - when doing a GET for the votes of a specific nametag
+        tag_id = self.context['view'].kwargs.get("tag_id", None)
+        return Vote.objects.filter(
+            tag=tag_id,
+            created_by_session_id=session_id
+        ).exists()
 
     def get_user_vote_choice(self, _):
         """
@@ -102,13 +132,6 @@ class VoteSerializer(serializers.ModelSerializer):
         # create sesion for the user if it does not exist
         request = self.context.get("view").request
         create_session_if_dne(request)
-
-        # do not allow a user to vote on the same nametag twice
-        if Vote.objects.filter(
-            tag=tag,
-            created_by_session_id=request.session.session_key
-        ).exists():
-            raise ValidationError("User has already voted on this nametag.")
 
         # create vote
         vote = Vote.objects.create(
