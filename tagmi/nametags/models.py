@@ -94,7 +94,7 @@ class Vote(models.Model):
     """ Represents a vote for a nametag of an address. """
 
     # upvote is True, downvote is False, no vote is null
-    value = models.BooleanField(null=True)
+    value = models.BooleanField(null=True, blank=True, default=None)
     tag = models.ForeignKey(
         to=Tag,
         on_delete=models.CASCADE,
