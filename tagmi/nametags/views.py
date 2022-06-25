@@ -36,6 +36,7 @@ class TagListCreate(generics.ListCreateAPIView):
                 Case(
                     When(votes__value=True, then=1),
                     When(votes__value=False, then=-1),
+                    When(votes__value=None, then=0),
                     output_field=IntegerField()
                 )
             )
