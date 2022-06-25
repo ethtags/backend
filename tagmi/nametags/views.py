@@ -8,7 +8,6 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Case, IntegerField, Sum, When
 from django.http import Http404
 from rest_framework import generics, mixins
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 # our imports

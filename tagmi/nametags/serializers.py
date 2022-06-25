@@ -5,7 +5,7 @@ Module containing serializers for the different models of the nametags app.
 
 # third party imports
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework.exceptions import PermissionDenied
 
 # our imports
 from .models import Address, Tag, Vote
@@ -41,8 +41,10 @@ class VoteSerializer(serializers.ModelSerializer):
         # a ListSerializer or TagSerialzier, e.g.
         #   - when doing a GET for a list of nametags
         #   - when doing a POST for a nametag
-        if isinstance(self.root, serializers.ListSerializer) \
-            or isinstance(self.root, TagSerializer):
+        if isinstance(self.root, (
+            serializers.ListSerializer,
+            TagSerializer
+        )):
             tag = self.parent.instance
 
         # VoteSerializer is not nested, e.g.
@@ -66,13 +68,15 @@ class VoteSerializer(serializers.ModelSerializer):
         # a ListSerializer or TagSerialzier, e.g.
         #   - when doing a GET for a list of nametags
         #   - when doing a POST for a nametag
-        if isinstance(self.root, serializers.ListSerializer) \
-            or isinstance(self.root, TagSerializer):
+        if isinstance(self.root, (
+            serializers.ListSerializer,
+            TagSerializer
+        )):
             tag = self.parent.instance
 
         # VoteSerializer is not nested, e.g.
         #   - when doing a GET for the votes of a specific nametag
-        else: 
+        else:
             tag = self.context['view'].kwargs.get("tag_id", None)
 
         user_vote = Vote.objects.filter(
@@ -90,13 +94,15 @@ class VoteSerializer(serializers.ModelSerializer):
         # a ListSerializer or TagSerialzier, e.g.
         #   - when doing a GET for a list of nametags
         #   - when doing a POST for a nametag
-        if isinstance(self.root, serializers.ListSerializer) \
-            or isinstance(self.root, TagSerializer):
+        if isinstance(self.root, (
+            serializers.ListSerializer,
+            TagSerializer
+        )):
             tag = self.parent.instance
 
         # VoteSerializer is not nested, e.g.
         #   - when doing a GET for the votes of a specific nametag
-        else: 
+        else:
             tag = self.context['view'].kwargs.get("tag_id", None)
 
         return Vote.objects.filter(tag=tag, value=True).count()
@@ -109,8 +115,10 @@ class VoteSerializer(serializers.ModelSerializer):
         # a ListSerializer or TagSerialzier, e.g.
         #   - when doing a GET for a list of nametags
         #   - when doing a POST for a nametag
-        if isinstance(self.root, serializers.ListSerializer) \
-            or isinstance(self.root, TagSerializer):
+        if isinstance(self.root, (
+            serializers.ListSerializer,
+            TagSerializer
+        )):
             tag = self.parent.instance
 
         # VoteSerializer is not nested, e.g.
