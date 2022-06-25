@@ -37,20 +37,21 @@ class VoteSerializer(serializers.ModelSerializer):
         """
         session_id = self.context['request'].session.session_key
 
-        # VoteSerializer is nested and its parent is a ListSerializer, e.g.
+        # VoteSerializer is nested and its parent is
+        # a ListSerializer or TagSerialzier, e.g.
         #   - when doing a GET for a list of nametags
-        if isinstance(self.root, serializers.ListSerializer):
+        #   - when doing a POST for a nametag
+        if isinstance(self.root, serializers.ListSerializer) \
+            or isinstance(self.root, TagSerializer):
             tag = self.parent.instance
-            return Vote.objects.filter(
-                tag=tag,
-                created_by_session_id=session_id
-            ).exists()
 
         # VoteSerializer is not nested, e.g.
         #   - when doing a GET for the votes of a specific nametag
-        tag_id = self.context['view'].kwargs.get("tag_id", None)
+        else:
+            tag = self.context['view'].kwargs.get("tag_id", None)
+
         return Vote.objects.filter(
-            tag=tag_id,
+            tag=tag,
             created_by_session_id=session_id
         ).exists()
 
@@ -60,23 +61,22 @@ class VoteSerializer(serializers.ModelSerializer):
         Returns None if the requestor has not voted.
         """
         session_id = self.context['request'].session.session_key
-        tag_id = self.context['view'].kwargs.get("tag_id", None)
 
-        # VoteSerializer is nested and its parent is a ListSerializer, e.g.
+        # VoteSerializer is nested and its parent is
+        # a ListSerializer or TagSerialzier, e.g.
         #   - when doing a GET for a list of nametags
-        if isinstance(self.root, serializers.ListSerializer):
+        #   - when doing a POST for a nametag
+        if isinstance(self.root, serializers.ListSerializer) \
+            or isinstance(self.root, TagSerializer):
             tag = self.parent.instance
-            user_vote = Vote.objects.filter(
-                tag=tag,
-                created_by_session_id=session_id
-            ).first()
-
-            return getattr(user_vote, "value", None)
 
         # VoteSerializer is not nested, e.g.
         #   - when doing a GET for the votes of a specific nametag
+        else: 
+            tag = self.context['view'].kwargs.get("tag_id", None)
+
         user_vote = Vote.objects.filter(
-            tag=tag_id,
+            tag=tag,
             created_by_session_id=session_id
         ).first()
 
@@ -86,38 +86,39 @@ class VoteSerializer(serializers.ModelSerializer):
         """
         Return the total number of upvotes for a given nametag.
         """
-        # VoteSerializer is nested and its parent is a ListSerializer, e.g.
+        # VoteSerializer is nested and its parent is
+        # a ListSerializer or TagSerialzier, e.g.
         #   - when doing a GET for a list of nametags
-        if isinstance(self.root, serializers.ListSerializer):
+        #   - when doing a POST for a nametag
+        if isinstance(self.root, serializers.ListSerializer) \
+            or isinstance(self.root, TagSerializer):
             tag = self.parent.instance
-            return Vote.objects.filter(
-                tag=tag.id,
-                value=True
-            ).count()
 
         # VoteSerializer is not nested, e.g.
         #   - when doing a GET for the votes of a specific nametag
-        tag_id = self.context['view'].kwargs.get("tag_id", None)
+        else: 
+            tag = self.context['view'].kwargs.get("tag_id", None)
 
-        return Vote.objects.filter(tag=tag_id, value=True).count()
+        return Vote.objects.filter(tag=tag, value=True).count()
 
     def get_downvotes_count(self, _):
         """
         Return the total number of downvotes for a given nametag.
         """
-        # VoteSerializer is nested and its parent is a ListSerializer, e.g.
+        # VoteSerializer is nested and its parent is
+        # a ListSerializer or TagSerialzier, e.g.
         #   - when doing a GET for a list of nametags
-        if isinstance(self.root, serializers.ListSerializer):
+        #   - when doing a POST for a nametag
+        if isinstance(self.root, serializers.ListSerializer) \
+            or isinstance(self.root, TagSerializer):
             tag = self.parent.instance
-            return Vote.objects.filter(
-                tag=tag.id,
-                value=False
-            ).count()
 
         # VoteSerializer is not nested, e.g.
         #   - when doing a GET for the votes of a specific nametag
-        tag_id = self.context['view'].kwargs.get("tag_id", None)
-        return Vote.objects.filter(tag=tag_id, value=False).count()
+        else:
+            tag = self.context['view'].kwargs.get("tag_id", None)
+
+        return Vote.objects.filter(tag=tag, value=False).count()
 
     def create(self, validated_data):
         """
@@ -191,7 +192,7 @@ class TagSerializer(serializers.ModelSerializer):
             pubkey=address_kwarg
         )
 
-        # get or create Nametag
+        # create Nametag
         request = self.context.get("view").request
         create_session_if_dne(request)
         tag = Tag.objects.create(
@@ -201,9 +202,8 @@ class TagSerializer(serializers.ModelSerializer):
         )
 
         # automatically upvote the nametag since user wanted to create it
-        Vote.objects.create(
+        tag.votes.create(
             value=True,
-            tag=tag,
             created_by_session_id=request.session.session_key
         )
 
