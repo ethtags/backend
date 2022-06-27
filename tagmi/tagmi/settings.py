@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 
 # our imports
 
+
 load_dotenv(".env")  # loads the configs from .env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -55,6 +56,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
+    'drf_recaptcha',
     'nametags',
 ]
 
@@ -165,3 +167,6 @@ REST_FRAMEWORK = {
 }
 handler500 = 'rest_framework.exceptions.server_error'
 handler400 = 'rest_framework.exceptions.bad_request'
+
+# drf-recaptcha config
+DRF_RECAPTCHA_SECRET_KEY = os.environ['RECAPTCHA_SECRET_KEY']

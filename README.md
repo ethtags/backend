@@ -4,10 +4,15 @@
 1. Clone the repo  
 2. Run the build script: `./build.sh`
 
-## Running
+## Running Server
 1. `source .env/bin/activate` 
 2. `cd tagmi`  
 3. `python manage.py runserver`  
+
+## Running Tests
+1. `source .env/bin/activate` 
+2. `cd tagmi`  
+3. `python manage.py test`  
 
 ## API Schema
 
@@ -166,6 +171,8 @@ PUT     /{address}/tags/{tag_id}/votes/
 Never use the `dev.env` file in production.  
 In production, make sure to set the environment variables on the command line, or create a .env file with the appropriate values before running the `build.sh` script.  
 
+`manage.py` has been edited to make tests use the settings module `./tagmi/test_settings.py`.  
+
 When inserting validation logic in models, you must override the model's `save` method and call `self.full_clean` in it.  
 Put all validation logic inside the model's `clean` method, and put all unique constraint validation inside the model's `validate_unique` method.  
 I found that's the best way to enforce validation logic for API users going through the views/serializers, as well as developers interacting with the code directly.  
@@ -178,7 +185,6 @@ At the moment we're creating a session for a user when they create a new nametag
 
 ## Future Feature Considerations
  * Pagination for nametags
- * Recaptcha with https://github.com/llybin/drf-recaptcha 
 
 
 ## TODO
