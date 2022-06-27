@@ -182,5 +182,4 @@ At the moment we're creating a session for a user when they create a new nametag
 
 
 ## TODO
- * Fix bug: when creating a nametag, the response does not include the automatic 1 upvote
  * Lock down the configuration before deploying to production. Search for # TODO comments in the code, as well as going through this https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/

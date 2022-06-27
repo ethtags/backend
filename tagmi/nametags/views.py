@@ -8,7 +8,6 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Case, IntegerField, Sum, When
 from django.http import Http404
 from rest_framework import generics, mixins
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 # our imports
@@ -36,6 +35,7 @@ class TagListCreate(generics.ListCreateAPIView):
                 Case(
                     When(votes__value=True, then=1),
                     When(votes__value=False, then=-1),
+                    When(votes__value=None, then=0),
                     output_field=IntegerField()
                 )
             )

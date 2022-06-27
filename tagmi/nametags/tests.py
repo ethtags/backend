@@ -37,6 +37,30 @@ class NametagsTests(APITestCase):
         self.tag_value = "Test Address One"
         self.req_data = {"nametag": self.tag_value}
 
+    def test_create_nametag(self):
+        """
+        Assert that a nametag is created for the given address.
+        Assert that the response contains the newly created nametag.
+        """
+        # set up test
+        # make request
+        response = self.client.post(self.urls["create"], self.req_data)
+
+        # make assertions
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        expected = {
+            "id": 1,
+            "nametag": self.req_data["nametag"],
+            "createdByUser": True,
+            "votes": {
+                "upvotes": 1,
+                "downvotes": 0,
+                "userVoted": True,
+                "userVoteChoice": True
+            }
+        }
+        self.assertDictEqual(response.data, expected)
+
     def test_create_nametag_address_dne(self):
         """
         Assert that a new address is created when it does not exist.
