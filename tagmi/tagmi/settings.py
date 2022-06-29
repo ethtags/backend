@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 
 # our imports
 
+
 load_dotenv(".env")  # loads the configs from .env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.

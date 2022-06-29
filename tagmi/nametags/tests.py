@@ -36,6 +36,7 @@ class NametagsTests(APITestCase):
         # common test request data
         self.tag_value = "Test Address One"
         self.req_data = {"nametag": self.tag_value}
+        self.vote_req_data = {"value": True}
 
     def test_create_nametag(self):
         """
@@ -234,15 +235,15 @@ class NametagsTests(APITestCase):
         """
         # set up test
         # create nametags for addresses one and two
-        data = {"nametag": "Address One Nametag One"}
-        self.client.post(self.urls["create"], data)
+        self.req_data["nametag"] = "Address One Nametag One"
+        self.client.post(self.urls["create"], self.req_data)
 
-        data = {"nametag": "Address One Nametag Two"}
-        self.client.post(self.urls["create"], data)
+        self.req_data["nametag"] = "Address One Nametag Two"
+        self.client.post(self.urls["create"], self.req_data)
 
         url = f"/{self.test_addrs[1]}/tags/"
-        data = {"nametag": "Address Two Nametag One"}
-        self.client.post(url, data)
+        self.req_data["nametag"] = "Address Two Nametag One"
+        self.client.post(url, self.req_data)
 
         # make request
         # list nametags for address one
@@ -278,10 +279,10 @@ class NametagsTests(APITestCase):
         """
         # set up test
         # create nametags for address one
-        data = {'nametag': "Address One Nametag One"}
-        self.client.post(self.urls["create"], data)
-        data = {'nametag': "Address One Nametag Two"}
-        self.client.post(self.urls["create"], data)
+        self.req_data['nametag'] = "Address One Nametag One"
+        self.client.post(self.urls["create"], self.req_data)
+        self.req_data['nametag'] = "Address One Nametag Two"
+        self.client.post(self.urls["create"], self.req_data)
 
         # make request
         response = self.client.get(self.urls["list"])
@@ -310,11 +311,11 @@ class NametagsTests(APITestCase):
         """
         # set up test
         # create nametags for addresses one and two
-        data = {"nametag": "Nametag One"}
-        self.client.post(self.urls["create"], data)
+        self.req_data["nametag"] = "Nametag One"
+        self.client.post(self.urls["create"], self.req_data)
 
-        data = {"nametag": "Nametag Two"}
-        self.client.post(self.urls["create"], data)
+        self.req_data["nametag"] = "Nametag Two"
+        self.client.post(self.urls["create"], self.req_data)
 
         # list nametags as the user that created the nametags
         # and assert that createdByUser is True
@@ -338,12 +339,12 @@ class NametagsTests(APITestCase):
         """
         # set up test
         # create three nametags
-        data = {"nametag": "Nametag One"}
-        one = self.client.post(self.urls["create"], data)
-        data = {"nametag": "Nametag Two"}
-        two = self.client.post(self.urls["create"], data)
-        data = {"nametag": "Nametag Three"}
-        three = self.client.post(self.urls["create"], data)
+        self.req_data["nametag"] = "Nametag One"
+        one = self.client.post(self.urls["create"], self.req_data)
+        self.req_data["nametag"] = "Nametag Two"
+        two = self.client.post(self.urls["create"], self.req_data)
+        self.req_data["nametag"] = "Nametag Three"
+        three = self.client.post(self.urls["create"], self.req_data)
 
         # upvote Nametag Three 3 times
         # upvote Nametag Two 3 times and downvote once
@@ -373,7 +374,8 @@ class NametagsTests(APITestCase):
         url = f"/{address}/tags/{tag_id}/votes/"
         for _ in range(num):
             self.client.cookies.clear()
-            resp = self.client.post(url, {"value": vote_value})
+            self.vote_req_data["value"] = vote_value
+            resp = self.client.post(url, self.vote_req_data)
             assert resp.status_code == 201
 
 
@@ -391,10 +393,16 @@ class VoteTests(APITestCase):
             "0x41329485877D12893bC4ef88A9208ee5cB5f5525"
         ]
 
+        # common test request data
+        self.req_data = {"value": True}
+        self.tag_req_data = {
+            "nametag": "Test Address One"
+        }
+
         # create nametag
         response = self.client.post(
             f"/{self.test_addrs[0]}/tags/",
-            {"nametag": "Test Address One"}
+            self.tag_req_data
         )
         self.tag_id = response.data["id"]
         self.vote_id = Vote.objects.get(tag=self.tag_id).id
@@ -404,9 +412,6 @@ class VoteTests(APITestCase):
         self.urls["list"] = f"/{self.test_addrs[0]}/tags/{self.tag_id}/votes/"
         self.urls["create"] = self.urls["list"]
         self.urls["update"] = self.urls["list"]
-
-        # common test request data
-        self.req_data = {"value": True}
 
     def test_upvote_nametag(self):
         """
