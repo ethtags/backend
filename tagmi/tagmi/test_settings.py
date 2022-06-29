@@ -1,5 +1,5 @@
-"""
-Module containing django config values for testing.
-"""
-# pylint: disable=wildcard-import, unused-wildcard-import
-from .settings import *  # noqa: F401,F403
+from .settings import *
+
+# drf-recaptcha test settings
+DRF_RECAPTCHA_TESTING = True
+DRF_RECAPTCHA_TESTING_PASS = True
