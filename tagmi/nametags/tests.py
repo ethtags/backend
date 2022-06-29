@@ -35,8 +35,8 @@ class NametagsTests(APITestCase):
 
         # common test request data
         self.tag_value = "Test Address One"
-        self.req_data = {"nametag": self.tag_value, "recaptcha": "dummy"}
-        self.vote_req_data = {"value": True, "recaptcha": "dummy"}
+        self.req_data = {"nametag": self.tag_value}
+        self.vote_req_data = {"value": True}
 
     def test_create_nametag(self):
         """
@@ -394,10 +394,9 @@ class VoteTests(APITestCase):
         ]
 
         # common test request data
-        self.req_data = {"value": True, "recaptcha": "dummy"}
+        self.req_data = {"value": True}
         self.tag_req_data = {
-            "nametag": "Test Address One",
-            "recaptcha": "dummy"
+            "nametag": "Test Address One"
         }
 
         # create nametag

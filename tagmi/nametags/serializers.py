@@ -4,7 +4,6 @@ Module containing serializers for the different models of the nametags app.
 # std lib imports
 
 # third party imports
-from drf_recaptcha.fields import ReCaptchaV3Field
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 
@@ -23,8 +22,7 @@ class VoteSerializer(serializers.ModelSerializer):
             "downvotes",
             "userVoted",
             "userVoteChoice",
-            "value",
-            "recaptcha"
+            "value"
         ]
 
     value = serializers.NullBooleanField(write_only=True)
@@ -32,11 +30,6 @@ class VoteSerializer(serializers.ModelSerializer):
     downvotes = serializers.SerializerMethodField('get_downvotes_count')
     userVoted = serializers.SerializerMethodField('get_user_voted')
     userVoteChoice = serializers.SerializerMethodField('get_user_vote_choice')
-    recaptcha = ReCaptchaV3Field(
-        action="vote",
-        required_score=0.5,
-    )
-
 
     def get_user_voted(self, _):
         """
@@ -179,16 +172,12 @@ class TagSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tag
-        fields = ["id", "nametag", "votes", "createdByUser", "recaptcha"]
+        fields = ["id", "nametag", "votes", "createdByUser"]
 
     votes = VoteSerializer(
         read_only=True
     )
     createdByUser = serializers.SerializerMethodField('get_created_by_user')
-    recaptcha = ReCaptchaV3Field(
-        action="nametag",
-        required_score=0.5,
-    )
 
     def get_created_by_user(self, obj):
         """
