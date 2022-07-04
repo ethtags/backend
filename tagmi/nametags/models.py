@@ -68,6 +68,9 @@ class Tag(models.Model):
         blank=False,
         null=False
     )
+    created = models.DateTimeField(
+        auto_now_add=True,
+    )
 
     def validate_unique(self, *args, **kwargs):
         """ Validate unique constraints. """
@@ -104,6 +107,12 @@ class Vote(models.Model):
         max_length=40,
         blank=False,
         null=False
+    )
+    created = models.DateTimeField(
+        auto_now_add=True
+    )
+    modified = models.DateTimeField(
+        auto_now=True
     )
 
     def validate_unique(self, *args, **kwargs):

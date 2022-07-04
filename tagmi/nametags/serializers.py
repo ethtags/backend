@@ -172,7 +172,7 @@ class TagSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tag
-        fields = ["id", "nametag", "votes", "createdByUser"]
+        fields = ["id", "nametag", "votes", "createdByUser", "created"]
 
     votes = VoteSerializer(
         read_only=True

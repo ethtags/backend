@@ -4,6 +4,7 @@ Module containing tests for the nametags application.
   rename session_id to session_key
 """
 # std lib imports
+from unittest import mock
 
 # third part imports
 from rest_framework import status
@@ -52,6 +53,7 @@ class NametagsTests(APITestCase):
         expected = {
             "id": 1,
             "nametag": self.req_data["nametag"],
+            "created": mock.ANY,
             "createdByUser": True,
             "votes": {
                 "upvotes": 1,
