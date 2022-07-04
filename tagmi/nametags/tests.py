@@ -231,6 +231,16 @@ class NametagsTests(APITestCase):
         response = self.client.post(url, self.req_data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_create_nametag_alphanumeric(self):
+        """
+        Assert that a 400 BAD REQUEST is returned when a
+        user creates a new nametag that is not alphanumeric.
+        """
+        # nametag with special charcater in it
+        self.req_data["nametag"] = "$up"
+        response = self.client.post(self.urls["create"], self.req_data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_list_nametags(self):
         """
         Assert that a list of all nametags related to an address are returned.

@@ -2,6 +2,7 @@
 Module containing serializers for the different models of the nametags app.
 """
 # std lib imports
+import re
 
 # third party imports
 from rest_framework import serializers
@@ -174,6 +175,7 @@ class TagSerializer(serializers.ModelSerializer):
         model = Tag
         fields = ["id", "nametag", "votes", "createdByUser", "created"]
 
+    allowed_regex = re.compile(r"^[\w\-\s]+$")
     votes = VoteSerializer(
         read_only=True
     )
@@ -190,6 +192,18 @@ class TagSerializer(serializers.ModelSerializer):
             return True
 
         return False
+
+    def validate_nametag(self, value):
+        """
+        Returns value if nametag passes validation.
+        Raises serializers.ValidationError otherwise.
+        Nametag must conform to:
+            - A-Z, a-z, 0-9, -, _, whitespace
+        """
+        if not self.allowed_regex.match(value):
+            raise serializers.ValidationError("Nametag must be alphanumeric.")
+
+        return value
 
     def create(self, validated_data):
         # get address from the URL
