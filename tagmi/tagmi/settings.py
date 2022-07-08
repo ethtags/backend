@@ -11,16 +11,13 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 # std lib imports
-import os
 
 # thid part imports
 from pathlib import Path
-from dotenv import load_dotenv
+from decouple import config
 
 # our imports
 
-
-load_dotenv(".env")  # loads the configs from .env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -30,20 +27,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ["SECRET_KEY"]
+SECRET_KEY = config("SECRET_KEY", cast=str)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ["DEBUG"]
+DEBUG = config("DEBUG", cast=bool)
 
-# TODO lock this down
-ALLOWED_HOSTS = [
-    '127.0.0.1',
-    'localhost',
-    '192.168.56.101'
-]
-
-# TODO lock this down
-SESSION_COOKIE_SAMESITE = None
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=lambda v: v.split(','))
 
 
 # Application definition
@@ -96,8 +85,12 @@ WSGI_APPLICATION = 'tagmi.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': config('DB_ENGINE', cast=str),
+        'NAME': config('DB_NAME', cast=str),
+        'USER': config('DB_USER', cast=str),
+        'PASSWORD': config('DB_PASSWORD', cast=str),
+        'HOST': config('DB_HOST', cast=str),
+        'PORT': config('DB_PORT', cast=str),
     }
 }
 
@@ -125,6 +118,14 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+# Logging
+# https://docs.djangoproject.com/en/4.0/howto/logging/
+LOGGING = {
+    'version': 1,                       # the dictConfig format version
+    'disable_existing_loggers': False,  # retain the default loggers
+}
+
+
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
 
@@ -147,14 +148,18 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# TODO lock this down
 # django-cors-headers config
-CORS_ALLOWED_ORIGINS = [
-    "http://127.0.0.1:3000",
-    "http://localhost:3000",
-    "http://192.168.56.101:3000",
-]
+CORS_ALLOWED_ORIGINS = config(
+    'CORS_ALLOWED_ORIGINS',
+    cast=lambda v: v.split(',')
+)
 CORS_ALLOW_CREDENTIALS = True
+
+# cross-site request forgery config
+CSRF_COOKIE_SECURE = config("CSRF_COOKIE_SECURE", cast=bool)
+
+# session cookie config
+SESSION_COOKIE_SECURE = config("SESSION_COOKIE_SECURE", cast=bool)
 
 # django-rest-framework config
 REST_FRAMEWORK = {
