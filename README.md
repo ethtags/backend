@@ -1,5 +1,9 @@
 # backend
 
+## Requirements  
+* Python 3.8.10
+* pg_config which is needed to install psycopg2 requirement. You can install it by running `sudo apt-get install libpq-dev` (on Ubuntu)  
+
 ## Installation
 1. Clone the repo  
 2. Run the build script: `./build.sh`
