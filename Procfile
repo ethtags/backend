@@ -1,1 +1,1 @@
-web: gunicorn tagmi.wsgi
+web: gunicorn tagmi.tagmi.wsgi
