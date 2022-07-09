@@ -175,7 +175,7 @@ class TagSerializer(serializers.ModelSerializer):
         model = Tag
         fields = ["id", "nametag", "votes", "createdByUser", "created"]
 
-    allowed_regex = re.compile(r"^[\w\-\s]+$")
+    allowed_regex = re.compile(r"^[\w\-\s\,\.]+$")
     votes = VoteSerializer(
         read_only=True
     )
@@ -201,7 +201,9 @@ class TagSerializer(serializers.ModelSerializer):
             - A-Z, a-z, 0-9, -, _, whitespace
         """
         if not self.allowed_regex.match(value):
-            raise serializers.ValidationError("Nametag must be alphanumeric.")
+            raise serializers.ValidationError(
+                "Nametag can only contain A-Z a-z 1-9 . ,"
+            )
 
         return value
 
