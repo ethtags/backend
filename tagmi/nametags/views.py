@@ -43,7 +43,7 @@ class TagListCreate(generics.ListCreateAPIView):
 
         # sort the queryset by descending net upvote count
         # (upvotes minus downvotes) from greatest to least
-        queryset = queryset.order_by("-net_upvotes")
+        queryset = queryset.order_by("-net_upvotes", "-created")
 
         return queryset
 

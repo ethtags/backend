@@ -267,11 +267,11 @@ class NametagsTests(APITestCase):
         self.assertEqual(len(response.data), 2)
         self.assertEqual(
             response.data[0]["nametag"],
-            "Address One Nametag One"
+            "Address One Nametag Two"
         )
         self.assertEqual(
             response.data[1]["nametag"],
-            "Address One Nametag Two"
+            "Address One Nametag One"
         )
 
         # list nametags for address two
@@ -348,6 +348,8 @@ class NametagsTests(APITestCase):
         """
         Assert that listing nametags returns them sorted
         from greatest to least net upvote count.
+        Assert that nametags with the same net upvote count
+        are sorted from most recent to least recent.
         """
         # set up test
         # create three nametags
@@ -357,10 +359,14 @@ class NametagsTests(APITestCase):
         two = self.client.post(self.urls["create"], self.req_data)
         self.req_data["nametag"] = "Nametag Three"
         three = self.client.post(self.urls["create"], self.req_data)
+        self.req_data["nametag"] = "Nametag Four"
+        four = self.client.post(self.urls["create"], self.req_data)
 
+        # upvote Nametag Four 3 times
         # upvote Nametag Three 3 times
         # upvote Nametag Two 3 times and downvote once
         # upvote Nametag One 3 times and downvote twice
+        self._vote_tag_n_times(self.test_addrs[0], four.data["id"], True, 3)
         self._vote_tag_n_times(self.test_addrs[0], three.data["id"], True, 3)
         self._vote_tag_n_times(self.test_addrs[0], two.data["id"], True, 3)
         self._vote_tag_n_times(self.test_addrs[0], two.data["id"], False, 1)
@@ -370,13 +376,15 @@ class NametagsTests(APITestCase):
         # GET the nametags
         response = self.client.get(self.urls["list"])
 
-        # assert that Nametag Three is first
+        # assert that Nametag Four is first
+        # assert that Nametag Three is second
         # assert that Nametag Two is second
         # assert that Nametag One is third
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data[0]["id"], 3)
-        self.assertEqual(response.data[1]["id"], 2)
-        self.assertEqual(response.data[2]["id"], 1)
+        self.assertEqual(response.data[0]["id"], 4)
+        self.assertEqual(response.data[1]["id"], 3)
+        self.assertEqual(response.data[2]["id"], 2)
+        self.assertEqual(response.data[3]["id"], 1)
 
     def _vote_tag_n_times(self, address, tag_id, vote_value, num):
         """
