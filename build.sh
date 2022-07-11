@@ -7,7 +7,7 @@ set -euv
 rm -rf .env || true
 
 # create new virtual env
-python3 -m venv .env
+python3.10 -m venv .env
 
 # activate virtual environment
 set +v
@@ -22,7 +22,7 @@ cd tagmi
 [ -f ".env" ] || cp ./dev.env ./.env
 
 # run linter
-pylint --load-plugins pylint_django --django-settings-module=tagmi.settings ./tagmi/ ./nametags/
+pylint --load-plugins pylint_django --ignore-paths="nametags/migrations" --django-settings-module=tagmi.settings ./tagmi/ ./nametags/
 
 # run flake8
 flake8 --extend-exclude "migrations" ./
