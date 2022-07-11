@@ -35,4 +35,5 @@ jobs:
         flake8 --extend-exclude "migrations" ./
     - name: Run Tests
       run: |
+        cd ./tagmi/
         python manage.py test
