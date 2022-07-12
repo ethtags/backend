@@ -21,19 +21,6 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install Dependencies
+    - name: Run Build Script
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt --no-cache-dir
-    - name: Set environment file
-      run: |
-        cp ./tagmi/dev.env ./tagmi/.env
-    - name: Run Linters
-      run: |
-        cd ./tagmi/
-        pylint --load-plugins pylint_django --ignore-paths="nametags/migrations" --django-settings-module=tagmi.settings ./tagmi/ ./nametags/
-        flake8 --extend-exclude "migrations" ./
-    - name: Run Tests
-      run: |
-        cd ./tagmi/
-        python manage.py test
+        ./build.sh
