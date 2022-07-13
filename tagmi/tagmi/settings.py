@@ -15,6 +15,8 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 # thid part imports
 from pathlib import Path
 from decouple import config
+from sentry_sdk.integrations.django import DjangoIntegration
+import sentry_sdk
 
 # our imports
 
@@ -171,3 +173,13 @@ REST_FRAMEWORK = {
 }
 handler500 = 'rest_framework.exceptions.server_error'
 handler400 = 'rest_framework.exceptions.bad_request'
+
+# sentry init and config
+sentry_sdk.init(
+    dsn=config("SENTRY_DSN", cast=str),
+    integrations=[
+        DjangoIntegration(),
+    ],
+    environment=config("SENTRY_ENVIRONMENT", cast=str),
+    traces_sample_rate=config("SENTRY_SAMPLE_RATE", cast=float)
+)

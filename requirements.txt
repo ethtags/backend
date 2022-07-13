@@ -1,5 +1,6 @@
 asgiref==3.5.2
 astroid==2.11.7
+certifi==2022.6.15
 dill==0.3.5.1
 Django==4.0.6
 django-cors-headers==3.13.0
@@ -18,7 +19,9 @@ pylint-django==2.5.3
 pylint-plugin-utils==0.7
 python-decouple==3.6
 pytz==2022.1
+sentry-sdk==1.7.0
 sqlparse==0.4.2
 tomli==2.0.1
 tomlkit==0.11.1
+urllib3==1.26.10
 wrapt==1.14.1
