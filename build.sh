@@ -19,7 +19,7 @@ pip install -r ./requirements.txt  --no-cache-dir
 
 # check for .env file and use the template if it's not there
 cd tagmi
-[ -f ".env" ] || cp ./dev.env ./.env
+[ -f ".env" ] || cp ./sample-dev-env ./.env
 
 # run linter
 pylint --load-plugins pylint_django --ignore-paths="nametags/migrations" --django-settings-module=tagmi.settings ./tagmi/ ./nametags/

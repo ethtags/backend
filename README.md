@@ -172,7 +172,7 @@ PUT     /{address}/tags/{tag_id}/votes/
 
 
 ## Notes
-Never use the `dev.env` file in production.  
+Never use the `sample-dev-env` file in production.  
 In production, make sure to set the environment variables on the command line, or create a .env file with the appropriate values before running the `build.sh` script.  
 
 `manage.py` has been edited to make tests use the settings module `./tagmi/test_settings.py`.  

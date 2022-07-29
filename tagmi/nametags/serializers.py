@@ -173,7 +173,9 @@ class TagSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Tag
-        fields = ["id", "nametag", "votes", "createdByUser", "created"]
+        fields = [
+            "id", "nametag", "votes", "createdByUser", "created", "source"
+        ]
 
     allowed_regex = re.compile(r"^[\w\-\s\,\.']+$")
     votes = VoteSerializer(

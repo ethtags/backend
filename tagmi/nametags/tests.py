@@ -55,6 +55,7 @@ class NametagsTests(APITestCase):
             "nametag": self.req_data["nametag"],
             "created": mock.ANY,
             "createdByUser": True,
+            "source": "",
             "votes": {
                 "upvotes": 1,
                 "downvotes": 0,
