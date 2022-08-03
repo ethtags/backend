@@ -4,15 +4,23 @@ Views for the nametags application.
 # std lib imports
 
 # third party imports
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Case, IntegerField, Sum, When
 from django.http import Http404
 from rest_framework import generics, mixins
 from rest_framework.response import Response
+import django_rq
+import redis
+import rq
 
 # our imports
+from .jobs.simple import long_running_func
 from .models import Tag, Vote
 from . import serializers
+
+
+redis_cursor = redis.Redis()
 
 
 class TagListCreate(generics.ListCreateAPIView):
@@ -46,6 +54,52 @@ class TagListCreate(generics.ListCreateAPIView):
         queryset = queryset.order_by("-net_upvotes", "-created")
 
         return queryset
+
+    def get(self, request, *args, **kwargs):
+        address = kwargs['address']
+
+        # check for last refresh of sources on the given address
+        job_class = django_rq.jobs.get_job_class()
+
+        try:
+            # get job for given address
+            job = job_class.fetch(address, redis_cursor)
+            status = job.get_status(refresh=True)
+
+            # job status is failed, stopped, cancelled
+            # requeue the job, set stale to True
+            if job.is_failed is True \
+                or job.is_stopped is True \
+                or job.is_canceled is True:
+                # TODO set stale to True
+                job = long_running_func.delay(job_id=address) 
+                print("created job: ", job)
+
+            # job status is queued, started, deferred
+            # do not requeue the job, set stale to True 
+            elif job.is_queued is True \
+                or job.is_started is True \
+                or job.is_deferred is True:
+                # TODO set stale to True
+                print("job is in progress, set stale to True")
+
+            # job status is finished (successful)
+            # do not queue the job, set stale to False 
+            elif job.is_finished is True:
+                # TODO set stale to false
+                print("job is finished, set stale to False") 
+
+            else:
+                raise Exception(f"Job {job} is in an undefined state, investigate.")
+
+        # job cannot be found therefore it is stale, create new job 
+        except rq.exceptions.NoSuchJobError:
+            # TODO set stale to True
+            job = long_running_func.delay(job_id=address) 
+            print("created job: ", job)
+            print("set stale to True")
+
+        return self.list(request, *args, **kwargs)
 
 
 class VoteCreateListUpdate(

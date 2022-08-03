@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
+    'django_rq',
     'nametags',
 ]
 
@@ -183,3 +184,16 @@ sentry_sdk.init(
     environment=config("SENTRY_ENVIRONMENT", cast=str),
     traces_sample_rate=config("SENTRY_SAMPLE_RATE", cast=float)
 )
+
+# django-rq configuration (redis, rq)
+RQ_QUEUES = {
+    'default': {
+        'HOST': 'localhost',
+        'PORT': 6379,
+        'DB': 0,
+    }
+}
+RQ = {
+    #'DEFAULT_RESULT_TTL': 28800,  # 8 hours
+    'DEFAULT_RESULT_TTL': 60,  # 1 minute
+}

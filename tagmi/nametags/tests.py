@@ -9,6 +9,7 @@ from unittest import mock
 # third part imports
 from rest_framework import status
 from rest_framework.test import APITestCase
+import rq
 
 # our imports
 from .models import Address, Tag, Vote
@@ -242,11 +243,15 @@ class NametagsTests(APITestCase):
         response = self.client.post(self.urls["create"], self.req_data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_list_nametags(self):
+    @mock.patch("rq.job.Job.fetch")
+    def test_list_nametags(self, mock_fetch_job):
         """
         Assert that a list of all nametags related to an address are returned.
         """
         # set up test
+        # mock redis job to be finished
+        NametagsTests._mock_redis_job_finished(mock_fetch_job)
+
         # create nametags for addresses one and two
         self.req_data["nametag"] = "Address One Nametag One"
         self.client.post(self.urls["create"], self.req_data)
@@ -285,12 +290,16 @@ class NametagsTests(APITestCase):
             "Address Two Nametag One"
         )
 
-    def test_list_nametags_votes(self):
+    @mock.patch("rq.job.Job.fetch")
+    def test_list_nametags_votes(self, mock_fetch_job):
         """
         Assert that a list of votes is returned for each
         nametag in the list of nametags.
         """
         # set up test
+        # mock redis job to be finished
+        NametagsTests._mock_redis_job_finished(mock_fetch_job)
+
         # create nametags for address one
         self.req_data['nametag'] = "Address One Nametag One"
         self.client.post(self.urls["create"], self.req_data)
@@ -317,12 +326,16 @@ class NametagsTests(APITestCase):
             True
         )
 
-    def test_list_nametags_created_by_user(self):
+    @mock.patch("rq.job.Job.fetch")
+    def test_list_nametags_created_by_user(self, mock_fetch_job):
         """
         Assert that the "createdByUser" field on a nametag is
         True/False if the requesting user created that nametag.
         """
         # set up test
+        # mock redis job to be finished
+        NametagsTests._mock_redis_job_finished(mock_fetch_job)
+
         # create nametags for addresses one and two
         self.req_data["nametag"] = "Nametag One"
         self.client.post(self.urls["create"], self.req_data)
@@ -345,7 +358,8 @@ class NametagsTests(APITestCase):
         self.assertEqual(response.data[0]["createdByUser"], False)
         self.assertEqual(response.data[1]["createdByUser"], False)
 
-    def test_list_nametags_sorted(self):
+    @mock.patch("rq.job.Job.fetch")
+    def test_list_nametags_sorted(self, mock_fetch_job):
         """
         Assert that listing nametags returns them sorted
         from greatest to least net upvote count.
@@ -353,6 +367,9 @@ class NametagsTests(APITestCase):
         are sorted from most recent to least recent.
         """
         # set up test
+        # mock redis job to be finished
+        NametagsTests._mock_redis_job_finished(mock_fetch_job)
+
         # create three nametags
         self.req_data["nametag"] = "Nametag One"
         one = self.client.post(self.urls["create"], self.req_data)
@@ -398,6 +415,12 @@ class NametagsTests(APITestCase):
             self.vote_req_data["value"] = vote_value
             resp = self.client.post(url, self.vote_req_data)
             assert resp.status_code == 201
+
+    @staticmethod
+    def _mock_redis_job_finished(mock_fetch_job):
+        job = mock.MagicMock()
+        job.is_finished = True
+        mock_fetch_job.return_value = job
 
 
 class VoteTests(APITestCase):
