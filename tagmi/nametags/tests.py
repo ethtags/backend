@@ -9,12 +9,17 @@ from unittest import mock
 # third part imports
 from rest_framework import status
 from rest_framework.test import APITestCase
+import fakeredis
 import rq
 
 # our imports
 from .models import Address, Tag, Vote
 
 
+fake_redis = fakeredis.FakeRedis(fakeredis.FakeServer())
+
+
+@mock.patch("nametags.views.redis_cursor", fake_redis)
 class NametagsTests(APITestCase):
     """
     Represents a Django class test case.
@@ -39,6 +44,13 @@ class NametagsTests(APITestCase):
         self.tag_value = "Test Address One"
         self.req_data = {"nametag": self.tag_value}
         self.vote_req_data = {"value": True}
+
+    def tearDown(self):
+        """
+        Runs once after each test.
+        """
+        # clear the fake redis backend
+        fake_redis.flushall()
 
     def test_create_nametag(self):
         """
@@ -243,14 +255,11 @@ class NametagsTests(APITestCase):
         response = self.client.post(self.urls["create"], self.req_data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    @mock.patch("rq.job.Job.fetch")
-    def test_list_nametags(self, mock_fetch_job):
+    def test_list_nametags(self):
         """
         Assert that a list of all nametags related to an address are returned.
         """
         # set up test
-        # mock redis job to be finished
-        NametagsTests._mock_redis_job_finished(mock_fetch_job)
 
         # create nametags for addresses one and two
         self.req_data["nametag"] = "Address One Nametag One"
@@ -290,16 +299,12 @@ class NametagsTests(APITestCase):
             "Address Two Nametag One"
         )
 
-    @mock.patch("rq.job.Job.fetch")
-    def test_list_nametags_votes(self, mock_fetch_job):
+    def test_list_nametags_votes(self):
         """
         Assert that a list of votes is returned for each
         nametag in the list of nametags.
         """
         # set up test
-        # mock redis job to be finished
-        NametagsTests._mock_redis_job_finished(mock_fetch_job)
-
         # create nametags for address one
         self.req_data['nametag'] = "Address One Nametag One"
         self.client.post(self.urls["create"], self.req_data)
@@ -326,16 +331,12 @@ class NametagsTests(APITestCase):
             True
         )
 
-    @mock.patch("rq.job.Job.fetch")
-    def test_list_nametags_created_by_user(self, mock_fetch_job):
+    def test_list_nametags_created_by_user(self):
         """
         Assert that the "createdByUser" field on a nametag is
         True/False if the requesting user created that nametag.
         """
         # set up test
-        # mock redis job to be finished
-        NametagsTests._mock_redis_job_finished(mock_fetch_job)
-
         # create nametags for addresses one and two
         self.req_data["nametag"] = "Nametag One"
         self.client.post(self.urls["create"], self.req_data)
@@ -358,8 +359,7 @@ class NametagsTests(APITestCase):
         self.assertEqual(response.data[0]["createdByUser"], False)
         self.assertEqual(response.data[1]["createdByUser"], False)
 
-    @mock.patch("rq.job.Job.fetch")
-    def test_list_nametags_sorted(self, mock_fetch_job):
+    def test_list_nametags_sorted(self):
         """
         Assert that listing nametags returns them sorted
         from greatest to least net upvote count.
@@ -367,9 +367,6 @@ class NametagsTests(APITestCase):
         are sorted from most recent to least recent.
         """
         # set up test
-        # mock redis job to be finished
-        NametagsTests._mock_redis_job_finished(mock_fetch_job)
-
         # create three nametags
         self.req_data["nametag"] = "Nametag One"
         one = self.client.post(self.urls["create"], self.req_data)
@@ -403,6 +400,166 @@ class NametagsTests(APITestCase):
         self.assertEqual(response.data[1]["id"], 3)
         self.assertEqual(response.data[2]["id"], 2)
         self.assertEqual(response.data[3]["id"], 1)
+
+    def test_tags_stale_sources_job_dne(self):
+        """
+        Stale sources in this test means there is no key in redis
+        with an ID matching the address that the user is searching for.
+        Assert that listing nametags with stale sources
+        will add a job to the redis queue.
+        Assert that listing nametags with stale sources
+        will return a flag to the frontend marking nametags as stale.
+        """
+        # set up test
+        # create a nametag for an address
+        self.req_data["nametag"] = "Nametag One"
+        self.client.post(self.urls["create"], self.req_data)
+
+        # assert no jobs exist for the given address
+        with self.assertRaises(rq.exceptions.NoSuchJobError):
+            rq.job.Job.fetch(
+                self.test_addrs[0].lower(),
+                connection=fake_redis
+            )
+
+        # make request to list nametags for the given address
+        response = self.client.get(self.urls["list"])
+
+        # make assertions
+        # assert that a job was added to the queue
+        # this would raise a NoSuchJobError otherwise
+        rq.job.Job.fetch(
+            self.test_addrs[0].lower(),
+            connection=fake_redis
+        )
+
+        # assert that the sourceIsStale flag in the response is True
+        self.assertEqual(response.data[0]["sourceIsStale"], True)
+
+    @mock.patch("rq.job.Job.get_status")
+    def test_tags_stale_sources_job_in_progress(self, mock_job_status):
+        """
+        Stale sources in this test means a job exists for the
+        address being searched, and the job is either
+        queued, started, or deferred (waiting on dependencies).
+        Assert that listing nametags with jobs in progress
+        will NOT add a job to the redis queue.
+        Assert that listing nametags with jobs in progress
+        will return a flag to the frontend marking nametags as stale.
+        """
+        # set up test
+        # create a nametag for an address
+        self.req_data["nametag"] = "Nametag One"
+        self.client.post(self.urls["create"], self.req_data)
+
+        # create an existing job for the address that is to be searched
+        job = rq.Queue(connection=fake_redis).enqueue(
+            "",
+            job_id=self.test_addrs[0].lower()
+        )
+        expected_created_at = job.created_at
+
+        # mock the job's status to be queued, started, deferred
+        mock_job_status.side_effect = [
+            rq.job.JobStatus.QUEUED,
+            rq.job.JobStatus.STARTED,
+            rq.job.JobStatus.DEFERRED
+        ]
+
+        for _ in range(3):
+            # make request to list nametags for the given address
+            # assert that the sourceIsStale flag in the response is True
+            response = self.client.get(self.urls["list"])
+            self.assertEqual(response.data[0]["sourceIsStale"], True)
+
+            # assert that no new job was added to the queue
+            job = rq.job.Job.fetch(
+                self.test_addrs[0].lower(),
+                connection=fake_redis
+            )
+            self.assertEqual(job.created_at, expected_created_at)
+
+    @mock.patch("rq.job.Job.get_status")
+    def test_tags_stale_sources_job_failed(self, mock_job_status):
+        """
+        Stale sources in this test means a job exists for the
+        address being searched, and the job has been
+        stopped, failed, or cancelled.
+        Assert that listing nametags with stale sources
+        will add a job to the redis queue.
+        Assert that listing nametags with stale sources
+        will return a flag to the frontend marking nametags as stale.
+        """
+        # set up test
+        # create a nametag for an address
+        self.req_data["nametag"] = "Nametag One"
+        self.client.post(self.urls["create"], self.req_data)
+
+        # create an existing job for the address that is to be searched
+        job = rq.Queue(connection=fake_redis).enqueue(
+            "",
+            job_id=self.test_addrs[0].lower()
+        )
+        prev_created_at = job.created_at
+
+        # mock the job's status to be stopped, failed, cancelled
+        mock_job_status.side_effect = [
+            rq.job.JobStatus.STOPPED,
+            rq.job.JobStatus.STOPPED,
+            rq.job.JobStatus.FAILED,
+            rq.job.JobStatus.FAILED,
+            rq.job.JobStatus.CANCELED,
+            rq.job.JobStatus.CANCELED
+        ]
+
+        for _ in range(3):
+            # make request to list nametags for the given address
+            # assert that the sourceIsStale flag in the response is True
+            response = self.client.get(self.urls["list"])
+            self.assertEqual(response.data[0]["sourceIsStale"], True)
+
+            # assert that a new job was added to the queue
+            job = rq.job.Job.fetch(
+                self.test_addrs[0].lower(),
+                connection=fake_redis
+            )
+            self.assertGreater(job.created_at, prev_created_at)
+            prev_created_at = job.created_at
+
+    @mock.patch("rq.job.Job.get_status")
+    def test_tags_sources_not_stale(self, mock_job_status):
+        """
+        Assert that listing nametags when sources are not stale
+        will NOT add a job to the redis queue.
+        Assert that listing nametags when sources are not stale
+        will return a flag to the frontend marking nametags as NOT stale.
+        """
+        # set up test
+        # create a nametag for an address
+        self.req_data["nametag"] = "Nametag One"
+        self.client.post(self.urls["create"], self.req_data)
+
+        # create an existing job for the address that is to be searched
+        job = rq.Queue(connection=fake_redis).enqueue(
+            "",
+            job_id=self.test_addrs[0].lower()
+        )
+        expected_created_at = job.created_at
+
+        # mock the job's status to be finished
+        mock_job_status.return_value = rq.job.JobStatus.FINISHED
+
+        # make request to list nametags for the given address
+        # assert that the sources are marked as NOT stale
+        response = self.client.get(self.urls["list"])
+        self.assertEqual(response.data[0]["sourceIsStale"], False)
+
+        # assert that no new job was added to the queue
+        job = rq.job.Job.fetch(
+            self.test_addrs[0].lower(),
+            connection=fake_redis
+        )
+        self.assertEqual(job.created_at, expected_created_at)
 
     def _vote_tag_n_times(self, address, tag_id, vote_value, num):
         """

@@ -174,7 +174,8 @@ class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = [
-            "id", "nametag", "votes", "createdByUser", "created", "source"
+            "id", "nametag", "votes", "createdByUser", "created",
+            "source", "sourceIsStale"
         ]
 
     allowed_regex = re.compile(r"^[\w\-\s\,\.']+$")
@@ -182,6 +183,10 @@ class TagSerializer(serializers.ModelSerializer):
         read_only=True
     )
     createdByUser = serializers.SerializerMethodField('get_created_by_user')
+    sourceIsStale = serializers.BooleanField(
+        source="source_is_stale",
+        read_only=True
+    )
 
     def get_created_by_user(self, obj):
         """
