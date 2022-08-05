@@ -8,25 +8,115 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Case, IntegerField, Sum, Value, When
 from django.http import Http404
 from rest_framework import generics, mixins
+from rest_framework.exceptions import ParseError
 from rest_framework.response import Response
 from rq.job import JobStatus
 import redis
 import rq
 
 # our imports
+from .constants import ADDRESS_FORMAT
 from .jobs.simple import long_running_func
-from .models import Tag, Vote
+from .models import Address, Tag, Vote
 from . import serializers
 
 
 redis_cursor = redis.Redis()
 
 
+class AddressRetrieve(generics.RetrieveAPIView):
+    """ View that allows retrieving addresses. """
+
+    serializer_class = serializers.AddressSerializer
+    sources_are_stale = False
+    address = None
+
+    def get_object(self):
+        """
+        Returns the object the view is displaying.
+        """
+        filter_kwargs = {"pubkey": self.address}
+        obj = generics.get_object_or_404(self.get_queryset(), **filter_kwargs)
+
+        # May raise a permission denied
+        self.check_object_permissions(self.request, obj)
+
+        return obj
+
+    def get_queryset(self):
+        """
+        Returns the queryset used for retrieving addresses.
+        """
+        queryset = Address.objects.filter(pubkey=self.address)
+
+        # annotate whether the address sources are stale
+        # self.sources_are_stale is set in the get method below
+        queryset = queryset.annotate(
+            sources_are_stale=Value(self.sources_are_stale)
+        )
+
+        return queryset
+
+    def get(self, request, *args, **kwargs):
+
+        # return 400 bad request if address is not in desired format
+        self.address = kwargs["address"].lower()
+        if not ADDRESS_FORMAT.match(self.address):
+            raise ParseError("Invalid address format given")
+
+        # handle stale sources for address
+        try:
+            # get job for given address
+            job = rq.job.Job.fetch(self.address, redis_cursor)
+            status = job.get_status(refresh=True)
+
+            # job status is failed, stopped, cancelled
+            # requeue the job, set stale to True
+            if status in [
+                JobStatus.FAILED,
+                JobStatus.STOPPED,
+                JobStatus.CANCELED
+            ]:
+                redis_queue = rq.Queue(connection=redis_cursor)
+                job = redis_queue.enqueue(
+                    long_running_func,
+                    job_id=self.address
+                )
+                self.sources_are_stale = True
+
+            # job status is queued, started, deferred
+            # do not requeue the job, set stale to True
+            elif status in [
+                JobStatus.QUEUED,
+                JobStatus.STARTED,
+                JobStatus.DEFERRED
+            ]:
+                self.sources_are_stale = True
+
+            # job status is finished (successful)
+            # do not queue the job, set stale to False
+            elif status in [JobStatus.FINISHED]:
+                self.sources_are_stale = False
+
+            else:
+                raise Exception(
+                    f"Job {job} is in an undefined state, investigate."
+                )
+
+        # job cannot be found therefore it is stale
+        # create new job, mark sources as stale
+        except rq.exceptions.NoSuchJobError:
+            redis_queue = rq.Queue(connection=redis_cursor)
+            job = redis_queue.enqueue(long_running_func, job_id=self.address)
+            self.sources_are_stale = True
+
+        return self.retrieve(request, *args, **kwargs)
+
+
 class TagListCreate(generics.ListCreateAPIView):
     """ View that allows listing and creating Tags. """
 
     serializer_class = serializers.TagSerializer
-    source_is_stale = False
 
     def get_queryset(self):
         """
@@ -49,65 +139,11 @@ class TagListCreate(generics.ListCreateAPIView):
             )
         )
 
-        # annotate whether the source is stale
-        queryset = queryset.annotate(
-            source_is_stale=Value(self.source_is_stale)
-        )
-
         # sort the queryset by descending net upvote count
         # (upvotes minus downvotes) from greatest to least
         queryset = queryset.order_by("-net_upvotes", "-created")
 
         return queryset
-
-    def get(self, request, *args, **kwargs):
-        address = kwargs['address']
-        address = address.lower()
-
-        # handle stale sources
-        try:
-            # get job for given address
-            job = rq.job.Job.fetch(address, redis_cursor)
-            status = job.get_status(refresh=True)
-
-            # job status is failed, stopped, cancelled
-            # requeue the job, set stale to True
-            if status in [
-                JobStatus.FAILED,
-                JobStatus.STOPPED,
-                JobStatus.CANCELED
-            ]:
-                redis_queue = rq.Queue(connection=redis_cursor)
-                job = redis_queue.enqueue(long_running_func, job_id=address)
-                self.source_is_stale = True
-
-            # job status is queued, started, deferred
-            # do not requeue the job, set stale to True
-            elif status in [
-                JobStatus.QUEUED,
-                JobStatus.STARTED,
-                JobStatus.DEFERRED
-            ]:
-                self.source_is_stale = True
-
-            # job status is finished (successful)
-            # do not queue the job, set stale to False
-            elif status in [JobStatus.FINISHED]:
-                self.source_is_stale = False
-
-            else:
-                raise Exception(
-                    f"Job {job} is in an undefined state, investigate."
-                )
-
-        # job cannot be found therefore it is stale
-        # create new job, mark results as stale
-        except rq.exceptions.NoSuchJobError:
-            redis_queue = rq.Queue(connection=redis_cursor)
-            job = redis_queue.enqueue(long_running_func, job_id=address)
-            self.source_is_stale = True
-
-        return self.list(request, *args, **kwargs)
 
 
 class VoteCreateListUpdate(

@@ -20,6 +20,250 @@ fake_redis = fakeredis.FakeRedis(fakeredis.FakeServer())
 
 
 @mock.patch("nametags.views.redis_cursor", fake_redis)
+class AddressTests(APITestCase):
+    """
+    Represents a Django class test case.
+    """
+
+    def setUp(self):
+        """
+        Runs once before each test.
+        """
+        # common test addresses
+        self.test_addrs = [
+            "0x4622BeF7d6C5f7f1ACC479B764688DC3E7316d68",
+            "0x41329485877D12893bC4ef88A9208ee5cB5f5525"
+        ]
+
+        # common test urls
+        self.urls = {}
+        self.urls["retrieve"] = f"/{self.test_addrs[0]}/"
+
+        # create Address record for the first test address
+        Address.objects.create(pubkey=self.test_addrs[0].lower())
+
+    def tearDown(self):
+        """
+        Runs once after each test.
+        """
+        # clear the fake redis backend
+        fake_redis.flushall()
+
+    def test_get_address(self):
+        """
+        Assert that retrieving an address returns the expected data.
+        """
+        # set up test
+        # make request
+        response = self.client.get(self.urls["retrieve"])
+
+        # make assertions
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        expected = {
+            "sourcesAreStale": True,
+            "nametags": []
+        }
+        self.assertDictEqual(response.data, expected)
+
+    def test_get_address_invalid(self):
+        """
+        Assert that retrieving an invalid address
+        does not add any jobs to redis, and returns
+        a 400 BAD REQUEST.
+        """
+        # set up test
+        bad_address = self.test_addrs[0][2:42]
+        url = f"/{bad_address}/"
+
+        # make request
+        response = self.client.get(url)
+
+        # make assertions
+        # assert no jobs exist for the given address
+        with self.assertRaises(rq.exceptions.NoSuchJobError):
+            rq.job.Job.fetch(
+                bad_address.lower(),
+                connection=fake_redis
+            )
+
+        # assert 400 BAD REQUEST is returned
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_get_address_dne(self):
+        """
+        Assert that retrieving an address that does not exist
+        returns a 404 NOT FOUND.
+        Assert that retrieving an address that does not exist
+        adds a job to the redis queue.
+        """
+        # set up test
+        url = f"/{self.test_addrs[1]}/"
+
+        # assert no jobs exist for the given address
+        with self.assertRaises(rq.exceptions.NoSuchJobError):
+            rq.job.Job.fetch(
+                self.test_addrs[1].lower(),
+                connection=fake_redis
+            )
+
+        # make request
+        response = self.client.get(url)
+
+        # make assertions
+        # assert 404 NOT FOUND was returned
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        # assert that a new job was created for the given address
+        rq.job.Job.fetch(
+            self.test_addrs[1].lower(),
+            connection=fake_redis
+        )
+
+    def test_stale_sources_job_dne(self):
+        """
+        Stale sources in this test means there is no key in redis
+        with an ID matching the address that the user is searching for.
+        Assert that retrieving an address with stale sources
+        will add a job to the redis queue.
+        Assert that retrieving an address with stale sources
+        will return a flag to the frontend marking sources as stale.
+        """
+        # set up test
+        # assert no jobs exist for the given address
+        with self.assertRaises(rq.exceptions.NoSuchJobError):
+            rq.job.Job.fetch(
+                self.test_addrs[0].lower(),
+                connection=fake_redis
+            )
+
+        # make request to retrieve an address
+        response = self.client.get(self.urls["retrieve"])
+
+        # make assertions
+        # assert that a job was added to the queue
+        # this would raise a NoSuchJobError otherwise
+        rq.job.Job.fetch(
+            self.test_addrs[0].lower(),
+            connection=fake_redis
+        )
+
+        # assert that sources are marked as stale
+        self.assertEqual(response.data["sourcesAreStale"], True)
+
+    @mock.patch("rq.job.Job.get_status")
+    def test_stale_sources_job_in_progress(self, mock_job_status):
+        """
+        Stale sources in this test means a job exists for the
+        address being searched, and the job is either
+        queued, started, or deferred (waiting on dependencies).
+        Assert that retrieving an address with jobs in progress
+        will NOT add a job to the redis queue.
+        Assert that retrieving an address with jobs in progress
+        will return a flag to the frontend marking sources as stale.
+        """
+        # set up test
+        # create an existing job for the address that is to be searched
+        job = rq.Queue(connection=fake_redis).enqueue(
+            "",
+            job_id=self.test_addrs[0].lower()
+        )
+        expected_created_at = job.created_at
+
+        # mock the job's status to be queued, started, deferred
+        mock_job_status.side_effect = [
+            rq.job.JobStatus.QUEUED,
+            rq.job.JobStatus.STARTED,
+            rq.job.JobStatus.DEFERRED
+        ]
+
+        for _ in range(3):
+            # make request to retrieve address
+            # assert that sources are marked as stale
+            response = self.client.get(self.urls["retrieve"])
+            self.assertEqual(response.data["sourcesAreStale"], True)
+
+            # assert that no new job was added to the queue
+            job = rq.job.Job.fetch(
+                self.test_addrs[0].lower(),
+                connection=fake_redis
+            )
+            self.assertEqual(job.created_at, expected_created_at)
+
+    @mock.patch("rq.job.Job.get_status")
+    def test_stale_sources_job_failed(self, mock_job_status):
+        """
+        Stale sources in this test means a job exists for the
+        address being searched, and the job has been
+        stopped, failed, or cancelled.
+        Assert that retrieving an address with stale sources
+        will add a job to the redis queue.
+        Assert that retrieving an address with stale sources
+        will return a flag to the frontend marking sources as stale.
+        """
+        # set up test
+        # create an existing job for the address that is to be searched
+        job = rq.Queue(connection=fake_redis).enqueue(
+            "",
+            job_id=self.test_addrs[0].lower()
+        )
+        prev_created_at = job.created_at
+
+        # mock the job's status to be stopped, failed, cancelled
+        mock_job_status.side_effect = [
+            rq.job.JobStatus.STOPPED,
+            rq.job.JobStatus.STOPPED,
+            rq.job.JobStatus.FAILED,
+            rq.job.JobStatus.FAILED,
+            rq.job.JobStatus.CANCELED,
+            rq.job.JobStatus.CANCELED
+        ]
+
+        for _ in range(3):
+            # make request to retrieve address
+            # assert that sources are marked as stale
+            response = self.client.get(self.urls["retrieve"])
+            self.assertEqual(response.data["sourcesAreStale"], True)
+
+            # assert that a new job was added to the queue
+            job = rq.job.Job.fetch(
+                self.test_addrs[0].lower(),
+                connection=fake_redis
+            )
+            self.assertGreater(job.created_at, prev_created_at)
+            prev_created_at = job.created_at
+
+    @mock.patch("rq.job.Job.get_status")
+    def test_sources_not_stale(self, mock_job_status):
+        """
+        Assert that retrieving an address when sources are not stale
+        will NOT add a job to the redis queue.
+        Assert that retrieving an address when sources are not stale
+        will return a flag to the frontend marking sources as NOT stale.
+        """
+        # set up test
+        # create an existing job for the address that is to be searched
+        job = rq.Queue(connection=fake_redis).enqueue(
+            "",
+            job_id=self.test_addrs[0].lower()
+        )
+        expected_created_at = job.created_at
+
+        # mock the job's status to be finished
+        mock_job_status.return_value = rq.job.JobStatus.FINISHED
+
+        # make request to retrieve address
+        # assert that the sources are marked as NOT stale
+        response = self.client.get(self.urls["retrieve"])
+        self.assertEqual(response.data["sourcesAreStale"], False)
+
+        # assert that no new job was added to the queue
+        job = rq.job.Job.fetch(
+            self.test_addrs[0].lower(),
+            connection=fake_redis
+        )
+        self.assertEqual(job.created_at, expected_created_at)
+
+
 class NametagsTests(APITestCase):
     """
     Represents a Django class test case.
@@ -401,166 +645,6 @@ class NametagsTests(APITestCase):
         self.assertEqual(response.data[2]["id"], 2)
         self.assertEqual(response.data[3]["id"], 1)
 
-    def test_tags_stale_sources_job_dne(self):
-        """
-        Stale sources in this test means there is no key in redis
-        with an ID matching the address that the user is searching for.
-        Assert that listing nametags with stale sources
-        will add a job to the redis queue.
-        Assert that listing nametags with stale sources
-        will return a flag to the frontend marking nametags as stale.
-        """
-        # set up test
-        # create a nametag for an address
-        self.req_data["nametag"] = "Nametag One"
-        self.client.post(self.urls["create"], self.req_data)
-
-        # assert no jobs exist for the given address
-        with self.assertRaises(rq.exceptions.NoSuchJobError):
-            rq.job.Job.fetch(
-                self.test_addrs[0].lower(),
-                connection=fake_redis
-            )
-
-        # make request to list nametags for the given address
-        response = self.client.get(self.urls["list"])
-
-        # make assertions
-        # assert that a job was added to the queue
-        # this would raise a NoSuchJobError otherwise
-        rq.job.Job.fetch(
-            self.test_addrs[0].lower(),
-            connection=fake_redis
-        )
-
-        # assert that the sourceIsStale flag in the response is True
-        self.assertEqual(response.data[0]["sourceIsStale"], True)
-
-    @mock.patch("rq.job.Job.get_status")
-    def test_tags_stale_sources_job_in_progress(self, mock_job_status):
-        """
-        Stale sources in this test means a job exists for the
-        address being searched, and the job is either
-        queued, started, or deferred (waiting on dependencies).
-        Assert that listing nametags with jobs in progress
-        will NOT add a job to the redis queue.
-        Assert that listing nametags with jobs in progress
-        will return a flag to the frontend marking nametags as stale.
-        """
-        # set up test
-        # create a nametag for an address
-        self.req_data["nametag"] = "Nametag One"
-        self.client.post(self.urls["create"], self.req_data)
-
-        # create an existing job for the address that is to be searched
-        job = rq.Queue(connection=fake_redis).enqueue(
-            "",
-            job_id=self.test_addrs[0].lower()
-        )
-        expected_created_at = job.created_at
-
-        # mock the job's status to be queued, started, deferred
-        mock_job_status.side_effect = [
-            rq.job.JobStatus.QUEUED,
-            rq.job.JobStatus.STARTED,
-            rq.job.JobStatus.DEFERRED
-        ]
-
-        for _ in range(3):
-            # make request to list nametags for the given address
-            # assert that the sourceIsStale flag in the response is True
-            response = self.client.get(self.urls["list"])
-            self.assertEqual(response.data[0]["sourceIsStale"], True)
-
-            # assert that no new job was added to the queue
-            job = rq.job.Job.fetch(
-                self.test_addrs[0].lower(),
-                connection=fake_redis
-            )
-            self.assertEqual(job.created_at, expected_created_at)
-
-    @mock.patch("rq.job.Job.get_status")
-    def test_tags_stale_sources_job_failed(self, mock_job_status):
-        """
-        Stale sources in this test means a job exists for the
-        address being searched, and the job has been
-        stopped, failed, or cancelled.
-        Assert that listing nametags with stale sources
-        will add a job to the redis queue.
-        Assert that listing nametags with stale sources
-        will return a flag to the frontend marking nametags as stale.
-        """
-        # set up test
-        # create a nametag for an address
-        self.req_data["nametag"] = "Nametag One"
-        self.client.post(self.urls["create"], self.req_data)
-
-        # create an existing job for the address that is to be searched
-        job = rq.Queue(connection=fake_redis).enqueue(
-            "",
-            job_id=self.test_addrs[0].lower()
-        )
-        prev_created_at = job.created_at
-
-        # mock the job's status to be stopped, failed, cancelled
-        mock_job_status.side_effect = [
-            rq.job.JobStatus.STOPPED,
-            rq.job.JobStatus.STOPPED,
-            rq.job.JobStatus.FAILED,
-            rq.job.JobStatus.FAILED,
-            rq.job.JobStatus.CANCELED,
-            rq.job.JobStatus.CANCELED
-        ]
-
-        for _ in range(3):
-            # make request to list nametags for the given address
-            # assert that the sourceIsStale flag in the response is True
-            response = self.client.get(self.urls["list"])
-            self.assertEqual(response.data[0]["sourceIsStale"], True)
-
-            # assert that a new job was added to the queue
-            job = rq.job.Job.fetch(
-                self.test_addrs[0].lower(),
-                connection=fake_redis
-            )
-            self.assertGreater(job.created_at, prev_created_at)
-            prev_created_at = job.created_at
-
-    @mock.patch("rq.job.Job.get_status")
-    def test_tags_sources_not_stale(self, mock_job_status):
-        """
-        Assert that listing nametags when sources are not stale
-        will NOT add a job to the redis queue.
-        Assert that listing nametags when sources are not stale
-        will return a flag to the frontend marking nametags as NOT stale.
-        """
-        # set up test
-        # create a nametag for an address
-        self.req_data["nametag"] = "Nametag One"
-        self.client.post(self.urls["create"], self.req_data)
-
-        # create an existing job for the address that is to be searched
-        job = rq.Queue(connection=fake_redis).enqueue(
-            "",
-            job_id=self.test_addrs[0].lower()
-        )
-        expected_created_at = job.created_at
-
-        # mock the job's status to be finished
-        mock_job_status.return_value = rq.job.JobStatus.FINISHED
-
-        # make request to list nametags for the given address
-        # assert that the sources are marked as NOT stale
-        response = self.client.get(self.urls["list"])
-        self.assertEqual(response.data[0]["sourceIsStale"], False)
-
-        # assert that no new job was added to the queue
-        job = rq.job.Job.fetch(
-            self.test_addrs[0].lower(),
-            connection=fake_redis
-        )
-        self.assertEqual(job.created_at, expected_created_at)
-
     def _vote_tag_n_times(self, address, tag_id, vote_value, num):
         """
         Upvotes/Downvotes the given address/nametag num amount of times.
@@ -572,12 +656,6 @@ class NametagsTests(APITestCase):
             self.vote_req_data["value"] = vote_value
             resp = self.client.post(url, self.vote_req_data)
             assert resp.status_code == 201
-
-    @staticmethod
-    def _mock_redis_job_finished(mock_fetch_job):
-        job = mock.MagicMock()
-        job.is_finished = True
-        mock_fetch_job.return_value = job
 
 
 class VoteTests(APITestCase):

@@ -24,6 +24,79 @@ Notes:
  * Client should support persistent cookies. The backend sets a cookie with a session id after a user creates a nametag or vote. This is then used by the backend to determine whether a user can edit a vote, etc.  
 
 ```
+GET     /{address}/
+    Returns:
+        * sourcesAreStale - Flag indicating whether ethtags has scraped its sources in the past X hours. If false, then the client has the freshest results. If true, then the client should resend this request every 30 seconds until the sources are no longer stale.
+        * nametags - All nametags and their votes for a given address, sorted by decreasing net upvotes.
+
+
+    Request Body
+        {}
+
+    Response Status
+        200 if successful
+        404 if address not found
+
+    Response Body
+        {
+            "sourcesAreStale": true | false,
+            "nametags": [
+                {
+                    "id": 2,
+                    "nametag": "Address One Nametag Two",
+                    "votes": {
+                        "upvotes": 2,
+                        "downvotes": 0,
+                        "userVoted": true,
+                        "userVoteChoice": true
+                    },
+                    "source": "",
+                    "created": timestamp,
+                    "createdByUser": true
+                },
+                {
+                    "id": 3,
+                    "nametag": "Address One Nametag Three",
+                    "votes": {
+                        "upvotes": 2,
+                        "downvotes": 1,
+                        "userVoted": true
+                        "userVoteChoice": false
+                    },
+                    "source": "",
+                    "created": timestamp,
+                    "createdByUser": false
+                },
+                {
+                    "id": 4,
+                    "nametag": "Address One Nametag Four",
+                    "votes": {
+                        "upvotes": 2,
+                        "downvotes": 1,
+                        "userVoted": false
+                        "userVoteChoice": null
+                    },
+                    "source": "",
+                    "created": timestamp,
+                    "createdByUser": false
+                },
+                {
+                    "id": 1,
+                    "nametag": "Address One Nametag One",
+                    "votes": {
+                        "upvotes": 1,
+                        "downvotes": 1,
+                        "userVoted": true
+                        "userVoteChoice": null
+                    },
+                    "source": "",
+                    "created": timestamp,
+                    "createdByUser": false
+                }
+            ]
+        }
+
+
 GET     /{address}/tags/
     Returns all nametags and their votes for a given address, sorted by decreasing net upvotes.
 
@@ -45,6 +118,8 @@ GET     /{address}/tags/
                     "userVoted": true,
                     "userVoteChoice": true
                 },
+                "source": "",
+                "created": timestamp,
                 "createdByUser": true
             },
             {
@@ -56,6 +131,8 @@ GET     /{address}/tags/
                     "userVoted": true
                     "userVoteChoice": false
                 },
+                "source": "",
+                "created": timestamp,
                 "createdByUser": false
             },
             {
@@ -67,6 +144,8 @@ GET     /{address}/tags/
                     "userVoted": false
                     "userVoteChoice": null
                 },
+                "source": "",
+                "created": timestamp,
                 "createdByUser": false
             },
             {
@@ -78,6 +157,8 @@ GET     /{address}/tags/
                     "userVoted": true
                     "userVoteChoice": null
                 },
+                "source": "",
+                "created": timestamp,
                 "createdByUser": false
             }
         ]

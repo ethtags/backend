@@ -2,13 +2,13 @@
 Module containing serializers for the different models of the nametags app.
 """
 # std lib imports
-import re
 
 # third party imports
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 
 # our imports
+from .constants import NAMETAG_FORMAT
 from .models import Address, Tag, Vote
 from .utils import create_session_if_dne
 
@@ -174,19 +174,13 @@ class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
         fields = [
-            "id", "nametag", "votes", "createdByUser", "created",
-            "source", "sourceIsStale"
+            "id", "nametag", "votes", "createdByUser", "created", "source"
         ]
 
-    allowed_regex = re.compile(r"^[\w\-\s\,\.']+$")
     votes = VoteSerializer(
         read_only=True
     )
     createdByUser = serializers.SerializerMethodField('get_created_by_user')
-    sourceIsStale = serializers.BooleanField(
-        source="source_is_stale",
-        read_only=True
-    )
 
     def get_created_by_user(self, obj):
         """
@@ -207,7 +201,7 @@ class TagSerializer(serializers.ModelSerializer):
         Nametag must conform to:
             - A-Z, a-z, 0-9, -, _, whitespace, comma, period, apostrophe.
         """
-        if not self.allowed_regex.match(value):
+        if not NAMETAG_FORMAT.match(value):
             raise serializers.ValidationError(
                 "Nametag can only contain A-Z a-z 1-9 ' . ,"
             )
@@ -249,3 +243,24 @@ class TagSerializer(serializers.ModelSerializer):
         """
         self.instance = instance
         return super().to_representation(instance)
+
+
+class AddressSerializer(serializers.ModelSerializer):
+    """ Serializer for the Address model. """
+
+    class Meta:
+        model = Address
+        fields = [
+            "nametags", "sourcesAreStale"
+        ]
+
+    nametags = TagSerializer(
+        source="tags",
+        many=True,
+        read_only=True
+    )
+
+    sourcesAreStale = serializers.BooleanField(
+        source="sources_are_stale",
+        read_only=True
+    )
