@@ -32,14 +32,13 @@ class BaseJobTests(BaseTestCase):
         """ Assert that the correct headers are being used. """
         self.assertEqual(self.client.headers, utils.HEADERS)
 
-    @responses.activate()
     def test_failed_responses(self):
         """ Assert that 4xx and 5xx responses raise exceptions. """
 
         # make certain urls return 400 and 500 status codes
-        responses.add(responses.GET, "https://200.com/", status=200)
-        responses.add(responses.GET, "https://400.com/", status=400)
-        responses.add(responses.GET, "https://500.com/", status=500)
+        self.mock_responses.add(responses.GET, "https://200.com/", status=200)
+        self.mock_responses.add(responses.GET, "https://400.com/", status=400)
+        self.mock_responses.add(responses.GET, "https://500.com/", status=500)
 
         # assert that 200 status code does not raise exception
         self.client.get("https://200.com/")

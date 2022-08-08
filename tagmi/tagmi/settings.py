@@ -11,9 +11,9 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 # std lib imports
-
-# thid part imports
 from pathlib import Path
+
+# third party imports
 from decouple import config
 from sentry_sdk.integrations.django import DjangoIntegration
 import sentry_sdk
