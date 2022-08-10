@@ -11,13 +11,13 @@ from responses.registries import OrderedRegistry
 import responses
 
 # our imports
-from .base import BaseTestCase
-from ..base import BaseScraper
+from .base import BaseScraperTestCase
 from .. import etherscan
-from ...models import Tag
+from ..base_scraper import BaseScraper
+from ....models import Tag
 
 
-class EtherscanTests(BaseTestCase):
+class EtherscanTests(BaseScraperTestCase):
     """
     Tests the etherscan scraper.
     """
@@ -26,14 +26,8 @@ class EtherscanTests(BaseTestCase):
         """ Runs before each test. """
 
         super().setUp()
-        self.client = etherscan.Etherscan()
+        self.client = etherscan.EtherscanScraper()
         self.samples_dir = Path(self.samples_dir, "etherscan")
-
-    def tearDown(self):
-        """ Runs after each test. """
-
-        self.fake_redis.flushall()
-        super().tearDown()
 
     def test_job_parent(self):
         """ Assert that the scraper is a child of the Base parent. """
@@ -67,7 +61,9 @@ class EtherscanTests(BaseTestCase):
         self.assertEqual(first.call_count, 1)
         self.assertEqual(second.call_count, 1)
 
-    @mock.patch("nametags.jobs.etherscan.Etherscan.parse_address_label")
+    @mock.patch(
+        "nametags.jobs.scrapers.etherscan.EtherscanScraper.parse_address_label"
+    )
     def test_address_lookup_found(self, mock_parse_label):
         """
         Assert that a nametag is added to the database if it
@@ -97,8 +93,12 @@ class EtherscanTests(BaseTestCase):
         tag = Tag.objects.get(nametag=fake_tag)
         self.assertEqual(tag.nametag, fake_tag)
 
-    @mock.patch("nametags.jobs.etherscan.Etherscan.parse_address_label")
-    @mock.patch("nametags.jobs.etherscan.Etherscan.parse_token_label")
+    @mock.patch(
+        "nametags.jobs.scrapers.etherscan.EtherscanScraper.parse_address_label"
+    )
+    @mock.patch(
+        "nametags.jobs.scrapers.etherscan.EtherscanScraper.parse_token_label"
+    )
     def test_address_lookup_not_found(self, mock_token, mock_address):
         """
         Assert that a token lookup is done if no label is found
@@ -136,9 +136,13 @@ class EtherscanTests(BaseTestCase):
         self.assertEqual(token_lookup.call_count, 1)
         self.assertEqual(mock_token.call_count, 1)
 
-    @mock.patch("nametags.jobs.etherscan.Etherscan.parse_token_label")
-    @mock.patch("nametags.jobs.etherscan.Etherscan.parse_address_label")
-    def test_token_lookup_found(self, mock_parse_addr, mock_parse_token):
+    @mock.patch(
+        "nametags.jobs.scrapers.etherscan.EtherscanScraper.parse_address_label"
+    )
+    @mock.patch(
+        "nametags.jobs.scrapers.etherscan.EtherscanScraper.parse_token_label"
+    )
+    def test_token_lookup_found(self, mock_parse_token, mock_parse_addr):
         """
         Assert that a nametag is added to the database if it
         is found during a token lookup.
@@ -176,8 +180,12 @@ class EtherscanTests(BaseTestCase):
         tag = Tag.objects.get(nametag=fake_tag)
         self.assertEqual(tag.nametag, fake_tag)
 
-    @mock.patch("nametags.jobs.etherscan.Etherscan.parse_token_label")
-    @mock.patch("nametags.jobs.etherscan.Etherscan.parse_address_label")
+    @mock.patch(
+        "nametags.jobs.scrapers.etherscan.EtherscanScraper.parse_address_label"
+    )
+    @mock.patch(
+        "nametags.jobs.scrapers.etherscan.EtherscanScraper.parse_token_label"
+    )
     def test_token_lookup_not_found(self, mock_parse_addr, mock_parse_token):
         """
         Assert that no nametag is added to the database if it

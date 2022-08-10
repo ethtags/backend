@@ -10,11 +10,11 @@ import responses
 
 # our imports
 from .base import BaseTestCase
-from .. import utils
-from ..base import BaseScraper
+from .. import constants
+from ..base_scraper import BaseScraper
 
 
-class BaseJobTests(BaseTestCase):
+class BaseScraperTests(BaseTestCase):
     """
     Tests the base scraper.
     """
@@ -30,7 +30,7 @@ class BaseJobTests(BaseTestCase):
 
     def test_headers(self):
         """ Assert that the correct headers are being used. """
-        self.assertEqual(self.client.headers, utils.HEADERS)
+        self.assertEqual(self.client.headers, constants.HEADERS)
 
     def test_failed_responses(self):
         """ Assert that 4xx and 5xx responses raise exceptions. """

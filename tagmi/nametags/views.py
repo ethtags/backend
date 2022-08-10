@@ -10,18 +10,12 @@ from django.http import Http404
 from rest_framework import generics, mixins
 from rest_framework.exceptions import ParseError
 from rest_framework.response import Response
-from rq.job import JobStatus
-import redis
-import rq
 
 # our imports
 from .constants import ADDRESS_FORMAT
-from .jobs.simple import long_running_func
+from .jobs.controllers import ScraperJobsController
 from .models import Address, Tag, Vote
 from . import serializers
-
-
-redis_cursor = redis.Redis()
 
 
 class AddressRetrieve(generics.RetrieveAPIView):
@@ -65,50 +59,9 @@ class AddressRetrieve(generics.RetrieveAPIView):
             raise ParseError("Invalid address format given")
 
         # handle stale sources for address
-        try:
-            # get job for given address
-            job = rq.job.Job.fetch(self.address, redis_cursor)
-            status = job.get_status(refresh=True)
-
-            # job status is failed, stopped, cancelled
-            # requeue the job, set stale to True
-            if status in [
-                JobStatus.FAILED,
-                JobStatus.STOPPED,
-                JobStatus.CANCELED
-            ]:
-                redis_queue = rq.Queue(connection=redis_cursor)
-                job = redis_queue.enqueue(
-                    long_running_func,
-                    job_id=self.address
-                )
-                self.sources_are_stale = True
-
-            # job status is queued, started, deferred
-            # do not requeue the job, set stale to True
-            elif status in [
-                JobStatus.QUEUED,
-                JobStatus.STARTED,
-                JobStatus.DEFERRED
-            ]:
-                self.sources_are_stale = True
-
-            # job status is finished (successful)
-            # do not queue the job, set stale to False
-            elif status in [JobStatus.FINISHED]:
-                self.sources_are_stale = False
-
-            else:
-                raise Exception(
-                    f"Job {job} is in an undefined state, investigate."
-                )
-
-        # job cannot be found therefore it is stale
-        # create new job, mark sources as stale
-        except rq.exceptions.NoSuchJobError:
-            redis_queue = rq.Queue(connection=redis_cursor)
-            job = redis_queue.enqueue(long_running_func, job_id=self.address)
-            self.sources_are_stale = True
+        jobs_controller = ScraperJobsController()
+        is_stale, _ = jobs_controller.enqueue_if_stale(self.address)
+        self.sources_are_stale = is_stale
 
         return self.retrieve(request, *args, **kwargs)
 

@@ -9,17 +9,11 @@ from unittest import mock
 # third part imports
 from rest_framework import status
 from rest_framework.test import APITestCase
-import fakeredis
-import rq
 
 # our imports
 from .models import Address, Tag, Vote
 
 
-fake_redis = fakeredis.FakeRedis(fakeredis.FakeServer())
-
-
-@mock.patch("nametags.views.redis_cursor", fake_redis)
 class AddressTests(APITestCase):
     """
     Represents a Django class test case.
@@ -42,25 +36,44 @@ class AddressTests(APITestCase):
         # create Address record for the first test address
         Address.objects.create(pubkey=self.test_addrs[0].lower())
 
-    def tearDown(self):
+    def test_get_address_stale_sources(self):
         """
-        Runs once after each test.
-        """
-        # clear the fake redis backend
-        fake_redis.flushall()
-
-    def test_get_address(self):
-        """
-        Assert that retrieving an address returns the expected data.
+        Assert that retrieving an address with stale sources
+        returns the expected data.
         """
         # set up test
-        # make request
-        response = self.client.get(self.urls["retrieve"])
+        with mock.patch(
+            "nametags.jobs.controllers.ScraperJobsController.enqueue_if_stale",
+        ) as mock_controller:
+            # make request
+            mock_controller.return_value = (True, True)  # stale, enqueued
+            response = self.client.get(self.urls["retrieve"])
 
         # make assertions
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         expected = {
             "sourcesAreStale": True,
+            "nametags": []
+        }
+        self.assertDictEqual(response.data, expected)
+
+    def test_get_address_fresh_sources(self):
+        """
+        Assert that retrieving an address with fresh sources
+        returns the expected data.
+        """
+        # set up test
+        with mock.patch(
+            "nametags.jobs.controllers.ScraperJobsController.enqueue_if_stale",
+        ) as mock_controller:
+            # make request
+            mock_controller.return_value = (False, False)  # stale, enqueued
+            response = self.client.get(self.urls["retrieve"])
+
+        # make assertions
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        expected = {
+            "sourcesAreStale": False,
             "nametags": []
         }
         self.assertDictEqual(response.data, expected)
@@ -75,193 +88,41 @@ class AddressTests(APITestCase):
         bad_address = self.test_addrs[0][2:42]
         url = f"/{bad_address}/"
 
-        # make request
-        response = self.client.get(url)
-
-        # make assertions
-        # assert no jobs exist for the given address
-        with self.assertRaises(rq.exceptions.NoSuchJobError):
-            rq.job.Job.fetch(
-                bad_address.lower(),
-                connection=fake_redis
-            )
+        with mock.patch(
+            "nametags.jobs.controllers.ScraperJobsController.enqueue_if_stale",
+        ) as mock_controller:
+            # make request
+            response = self.client.get(url)
 
         # assert 400 BAD REQUEST is returned
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # assert that the scraper job controller was not called
+        self.assertEqual(mock_controller.call_count, 0)
 
     def test_get_address_dne(self):
         """
         Assert that retrieving an address that does not exist
         returns a 404 NOT FOUND.
-        Assert that retrieving an address that does not exist
-        adds a job to the redis queue.
+        Assert that the ScraperJobsController was called to add
+        a job to the redis queue. This behavior is tested further in
+        ./jobs/test_controllers.py
         """
         # set up test
         url = f"/{self.test_addrs[1]}/"
 
-        # assert no jobs exist for the given address
-        with self.assertRaises(rq.exceptions.NoSuchJobError):
-            rq.job.Job.fetch(
-                self.test_addrs[1].lower(),
-                connection=fake_redis
-            )
-
-        # make request
-        response = self.client.get(url)
+        with mock.patch(
+            "nametags.jobs.controllers.ScraperJobsController.enqueue_if_stale",
+        ) as mock_controller:
+            mock_controller.return_value = (True, True)  # stale, enqueued
+            response = self.client.get(url)
 
         # make assertions
         # assert 404 NOT FOUND was returned
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-        # assert that a new job was created for the given address
-        rq.job.Job.fetch(
-            self.test_addrs[1].lower(),
-            connection=fake_redis
-        )
-
-    def test_stale_sources_job_dne(self):
-        """
-        Stale sources in this test means there is no key in redis
-        with an ID matching the address that the user is searching for.
-        Assert that retrieving an address with stale sources
-        will add a job to the redis queue.
-        Assert that retrieving an address with stale sources
-        will return a flag to the frontend marking sources as stale.
-        """
-        # set up test
-        # assert no jobs exist for the given address
-        with self.assertRaises(rq.exceptions.NoSuchJobError):
-            rq.job.Job.fetch(
-                self.test_addrs[0].lower(),
-                connection=fake_redis
-            )
-
-        # make request to retrieve an address
-        response = self.client.get(self.urls["retrieve"])
-
-        # make assertions
-        # assert that a job was added to the queue
-        # this would raise a NoSuchJobError otherwise
-        rq.job.Job.fetch(
-            self.test_addrs[0].lower(),
-            connection=fake_redis
-        )
-
-        # assert that sources are marked as stale
-        self.assertEqual(response.data["sourcesAreStale"], True)
-
-    @mock.patch("rq.job.Job.get_status")
-    def test_stale_sources_job_in_progress(self, mock_job_status):
-        """
-        Stale sources in this test means a job exists for the
-        address being searched, and the job is either
-        queued, started, or deferred (waiting on dependencies).
-        Assert that retrieving an address with jobs in progress
-        will NOT add a job to the redis queue.
-        Assert that retrieving an address with jobs in progress
-        will return a flag to the frontend marking sources as stale.
-        """
-        # set up test
-        # create an existing job for the address that is to be searched
-        job = rq.Queue(connection=fake_redis).enqueue(
-            "",
-            job_id=self.test_addrs[0].lower()
-        )
-        expected_created_at = job.created_at
-
-        # mock the job's status to be queued, started, deferred
-        mock_job_status.side_effect = [
-            rq.job.JobStatus.QUEUED,
-            rq.job.JobStatus.STARTED,
-            rq.job.JobStatus.DEFERRED
-        ]
-
-        for _ in range(3):
-            # make request to retrieve address
-            # assert that sources are marked as stale
-            response = self.client.get(self.urls["retrieve"])
-            self.assertEqual(response.data["sourcesAreStale"], True)
-
-            # assert that no new job was added to the queue
-            job = rq.job.Job.fetch(
-                self.test_addrs[0].lower(),
-                connection=fake_redis
-            )
-            self.assertEqual(job.created_at, expected_created_at)
-
-    @mock.patch("rq.job.Job.get_status")
-    def test_stale_sources_job_failed(self, mock_job_status):
-        """
-        Stale sources in this test means a job exists for the
-        address being searched, and the job has been
-        stopped, failed, or cancelled.
-        Assert that retrieving an address with stale sources
-        will add a job to the redis queue.
-        Assert that retrieving an address with stale sources
-        will return a flag to the frontend marking sources as stale.
-        """
-        # set up test
-        # create an existing job for the address that is to be searched
-        job = rq.Queue(connection=fake_redis).enqueue(
-            "",
-            job_id=self.test_addrs[0].lower()
-        )
-        prev_created_at = job.created_at
-
-        # mock the job's status to be stopped, failed, cancelled
-        mock_job_status.side_effect = [
-            rq.job.JobStatus.STOPPED,
-            rq.job.JobStatus.STOPPED,
-            rq.job.JobStatus.FAILED,
-            rq.job.JobStatus.FAILED,
-            rq.job.JobStatus.CANCELED,
-            rq.job.JobStatus.CANCELED
-        ]
-
-        for _ in range(3):
-            # make request to retrieve address
-            # assert that sources are marked as stale
-            response = self.client.get(self.urls["retrieve"])
-            self.assertEqual(response.data["sourcesAreStale"], True)
-
-            # assert that a new job was added to the queue
-            job = rq.job.Job.fetch(
-                self.test_addrs[0].lower(),
-                connection=fake_redis
-            )
-            self.assertGreater(job.created_at, prev_created_at)
-            prev_created_at = job.created_at
-
-    @mock.patch("rq.job.Job.get_status")
-    def test_sources_not_stale(self, mock_job_status):
-        """
-        Assert that retrieving an address when sources are not stale
-        will NOT add a job to the redis queue.
-        Assert that retrieving an address when sources are not stale
-        will return a flag to the frontend marking sources as NOT stale.
-        """
-        # set up test
-        # create an existing job for the address that is to be searched
-        job = rq.Queue(connection=fake_redis).enqueue(
-            "",
-            job_id=self.test_addrs[0].lower()
-        )
-        expected_created_at = job.created_at
-
-        # mock the job's status to be finished
-        mock_job_status.return_value = rq.job.JobStatus.FINISHED
-
-        # make request to retrieve address
-        # assert that the sources are marked as NOT stale
-        response = self.client.get(self.urls["retrieve"])
-        self.assertEqual(response.data["sourcesAreStale"], False)
-
-        # assert that no new job was added to the queue
-        job = rq.job.Job.fetch(
-            self.test_addrs[0].lower(),
-            connection=fake_redis
-        )
-        self.assertEqual(job.created_at, expected_created_at)
+        # assert that the ScraperJobsController was called
+        mock_controller.assert_called_with(self.test_addrs[1].lower())
 
 
 class NametagsTests(APITestCase):
@@ -288,13 +149,6 @@ class NametagsTests(APITestCase):
         self.tag_value = "Test Address One"
         self.req_data = {"nametag": self.tag_value}
         self.vote_req_data = {"value": True}
-
-    def tearDown(self):
-        """
-        Runs once after each test.
-        """
-        # clear the fake redis backend
-        fake_redis.flushall()
 
     def test_create_nametag(self):
         """

@@ -9,8 +9,8 @@ import lxml.html
 import rq
 
 # our imports
-from . import base
-from ..models import Address, Tag
+from .base_scraper import BaseScraper
+from ...models import Address, Tag
 
 
 subsequent_headers = {
@@ -20,7 +20,7 @@ subsequent_headers = {
 }
 
 
-class Etherscan(base.BaseScraper):
+class EtherscanScraper(BaseScraper):
     """
     Etherscan scraper.
     """
@@ -42,12 +42,12 @@ class Etherscan(base.BaseScraper):
         # lookup address and parse label
         address = rq.get_current_job().get_id()
         resp = self.get(f"https://etherscan.io/address/{address}/")
-        label = Etherscan.parse_address_label(resp.text)
+        label = self.parse_address_label(resp.text)
 
         # if address lookup found nothing, do token lookup
         if label is None:
             resp = self.get(f"https://etherscan.io/token/{address}/")
-            label = Etherscan.parse_token_label(resp.text)
+            label = self.parse_token_label(resp.text)
 
         # store label in database
         if label is not None:

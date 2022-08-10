@@ -1,8 +1,7 @@
 """
-Module containing tests for the etherscan.py scraper.
+Module containing base test class for jobs and scrapers.
 """
 # std lib imports
-from pathlib import Path
 from unittest import TestCase
 
 # third party imports
@@ -32,9 +31,6 @@ class BaseTestCase(TestCase):
 
         # address to be used in tests
         self.test_addr = "0x7F101fE45e6649A6fB8F3F8B43ed03D353f2B90c".lower()
-
-        # directory containing html samples
-        self.samples_dir = Path(__file__).parent.joinpath("./samples")
 
     def tearDown(self):
         """ Runs after each test. """

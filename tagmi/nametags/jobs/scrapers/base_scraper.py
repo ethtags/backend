@@ -7,7 +7,7 @@ Module containing base class for scrapers.
 import requests
 
 # our imports
-from . import utils
+from . import constants
 
 
 class BaseScraper(requests.Session):
@@ -18,7 +18,7 @@ class BaseScraper(requests.Session):
 
     def __init__(self):
         super().__init__()
-        self.headers.update(utils.HEADERS)
+        self.headers.update(constants.HEADERS)
 
     def request(self, method, url, *args, **kwargs):
         """
