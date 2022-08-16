@@ -2,9 +2,9 @@
 Module containing base test class for jobs and scrapers.
 """
 # std lib imports
-from unittest import TestCase
 
 # third party imports
+from django.test import TestCase
 import fakeredis
 import responses
 
