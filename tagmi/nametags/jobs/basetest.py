@@ -7,9 +7,9 @@ from unittest import TestCase
 # third party imports
 import fakeredis
 import responses
-import rq
 
 # our imports
+from . import queue
 
 
 class BaseTestCase(TestCase):
@@ -23,7 +23,7 @@ class BaseTestCase(TestCase):
 
         # fake redis backend and queue
         self.fake_redis = fakeredis.FakeRedis(fakeredis.FakeServer())
-        self.queue = rq.Queue(connection=self.fake_redis, is_async=False)
+        self.queue = queue.Queue(connection=self.fake_redis, is_async=False)
 
         # fake requests/responses
         self.mock_responses = responses.RequestsMock()

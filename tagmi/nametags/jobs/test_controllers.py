@@ -11,12 +11,26 @@ from .basetest import BaseTestCase
 from .controllers import ScraperJobsController
 
 
-class PicklableMock(mock.Mock):
-    """ Subclass of Mock that works with Pickle serialization. """
+class MockScraperSuccess:
+    """
+    Mock class for a scraper that
+    finishes running successfully.
+    """
+    # pylint: disable=C0116,C0321
+    @property
+    def name(self): return "scraper_success"
+    def run(self): return None
 
-    def __reduce__(self):
-        """ Support Pickle serialization. """
-        return (mock.Mock, ())
+
+class MockScraperFail:
+    """
+    Mock class for a scraper that
+    errors out while running.
+    """
+    # pylint: disable=C0116,C0321
+    @property
+    def name(self): return "scraper_fail"
+    def run(self): raise Exception("fail")
 
 
 class ScraperJobsControllerTests(BaseTestCase):
@@ -180,21 +194,11 @@ class ScraperJobsControllerTests(BaseTestCase):
         whether its children succeeded or failed.
         """
         # set up test
-        # create a scraper job that will succeed
-        will_succeed = PicklableMock()
-        will_succeed.name = "scraper_one"  # pylint: disable=W0201
-        will_succeed.run.return_value = None
-
-        # create a scraper job that will fail
-        will_fail = PicklableMock()
-        will_fail.name = "scraper_two"  # pylint: disable=W0201
-        will_fail.run.side_effect = RuntimeError("Failed.")
 
         # mock controller scrapers
-        scrapers = [will_succeed, will_fail]
         with mock.patch(
-            "nametags.jobs.controllers.scraper_jobs_to_run",
-            scrapers
+            "nametags.jobs.constants.scraper_jobs_to_run",
+            [MockScraperSuccess, MockScraperFail]
         ):
             # call controller
             controller = ScraperJobsController(
@@ -205,17 +209,17 @@ class ScraperJobsControllerTests(BaseTestCase):
                 self.test_addr
             )
 
-            # assert that one job failed, the other succeeded
+            # assert that one job succeeded, the other failed
             successful_job = rq.job.Job.fetch(
-                f"{self.test_addr}_scraper_one",
+                f"{self.test_addr}_scraper_success",
                 connection=self.fake_redis
             )
+            self.assertEqual(successful_job.is_finished, True)
             failed_job = rq.job.Job.fetch(
-                f"{self.test_addr}_scraper_two",
+                f"{self.test_addr}_scraper_fail",
                 connection=self.fake_redis
             )
-            self.assertTrue(successful_job.is_finished)
-            self.assertTrue(failed_job.is_failed)
+            self.assertEqual(failed_job.is_failed, True)
 
             # assert that the parent job depends on the children
             parent_job = rq.job.Job.fetch(

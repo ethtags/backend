@@ -19,8 +19,7 @@ class ScraperJob():
         """ Returns name of scraper job. Should be implemented by child. """
         raise NotImplementedError("Must subclass and override this method.")
 
-    @staticmethod
-    def run():
+    def run(self):
         """ Does work. Should be implemented by child. """
         raise NotImplementedError("Must subclass and override this method.")
 
@@ -36,10 +35,9 @@ class EtherscanScraperJob(ScraperJob):
 
         return "etherscan_scraper"
 
-    @staticmethod
-    def run():
+    def run(self):
         """
         Runs the etherscan scraper.
         """
         scraper = EtherscanScraper()
-        scraper.run()
+        return scraper.run()

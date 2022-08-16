@@ -10,3 +10,10 @@ from .scraper_jobs import EtherscanScraperJob
 scraper_jobs_to_run = [
     EtherscanScraperJob
 ]
+
+
+def noop():
+    """
+    Empty function that runs after job dependencies have finished running.
+    """
+    return None

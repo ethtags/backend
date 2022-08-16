@@ -185,6 +185,7 @@ sentry_sdk.init(
 )
 
 # rq (redis queue) configuration
+REDIS_URL = config("REDIS_URL", cast=str)
 RQ = {
-        'DEFAULT_RESULT_TTL': config("RQ_DEFAULT_RESULT_TTL", cast=int)
+    'DEFAULT_RESULT_TTL': config("RQ_DEFAULT_RESULT_TTL", cast=int)
 }

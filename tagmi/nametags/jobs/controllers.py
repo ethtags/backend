@@ -9,7 +9,8 @@ import redis
 import rq
 
 # our imports
-from .constants import scraper_jobs_to_run
+from . import constants
+from . import queue
 
 
 class ScraperJobsController():
@@ -28,7 +29,7 @@ class ScraperJobsController():
         # create redis queue if none given
         self.redis_queue = redis_queue
         if self.redis_queue is None:
-            self.redis_queue = rq.Queue(connection=self.redis_cursor)
+            self.redis_queue = queue.Queue(connection=self.redis_cursor)
 
     def create_jobs(self, address):
         """
@@ -39,11 +40,12 @@ class ScraperJobsController():
         """
         # enqueue scraper jobs
         jobs = []
-        for source in scraper_jobs_to_run:
+        for source in constants.scraper_jobs_to_run:
+            obj = source()
             jobs.append(
                 self.redis_queue.enqueue(
-                    source.run,
-                    job_id=f"{address}_{source.name}"
+                    obj.run,
+                    job_id=f"{address}_{obj.name}"
                 )
             )
 
@@ -53,7 +55,7 @@ class ScraperJobsController():
             allow_failure=True
         )
         self.redis_queue.enqueue(
-            "",
+            constants.noop,
             job_id=address,
             depends_on=dependents
         )
