@@ -10,10 +10,11 @@ import urllib.parse
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from redis import Redis
-from rq import Queue, Connection
+from rq import Connection
 from rq.worker import HerokuWorker as Worker
 
 # our imports
+from nametags.jobs.queue import Queue
 
 
 listen = ['default']

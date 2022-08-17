@@ -6,6 +6,7 @@ Module containing scraper jobs.
 # third party imports
 
 # our imports
+from .scrapers.dune import DuneScraper
 from .scrapers.etherscan import EtherscanScraper
 
 
@@ -40,4 +41,23 @@ class EtherscanScraperJob(ScraperJob):
         Runs the etherscan scraper.
         """
         scraper = EtherscanScraper()
+        return scraper.run()
+
+
+class DuneScraperJob(ScraperJob):
+    """
+    Job that looks up an address on dune labels.
+    """
+
+    @property
+    def name(self):
+        """ Returns the name of the scraper job. """
+
+        return "dune_scraper"
+
+    def run(self):
+        """
+        Runs the dune scraper.
+        """
+        scraper = DuneScraper()
         return scraper.run()

@@ -3,6 +3,7 @@ Module containing tests for the dune.py scraper.
 """
 # std lib imports
 from pathlib import Path
+from unittest import mock
 
 # third party imports
 from responses import matchers
@@ -16,6 +17,7 @@ from ..base_scraper import BaseScraper
 from ....models import Tag
 
 
+@mock.patch("nametags.jobs.scrapers.dune.time", mock.MagicMock())
 class DuneTests(BaseScraperTestCase):
     """
     Tests the dune scraper.
