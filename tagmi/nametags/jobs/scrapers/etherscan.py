@@ -3,7 +3,6 @@ Module containing etherscan scraper.
 """
 # std lib imports
 import logging
-import uuid
 
 # third party imports
 import lxml.html
@@ -11,7 +10,7 @@ import rq
 
 # our imports
 from .base_scraper import BaseScraper
-from ...models import Address, Tag
+from .utils import add_label_to_db
 
 
 logger = logging.getLogger(__name__)
@@ -54,24 +53,7 @@ class EtherscanScraper(BaseScraper):
             label = self.parse_token_label(resp.text)
 
         # store label in database
-        if label is not None:
-            logger.info("label found, adding it to Tags table")
-
-            # get or create address
-            address_obj, _ = Address.objects.get_or_create(
-                pubkey=address
-            )
-
-            # create Tag if it does not exist
-            if not Tag.objects.filter(
-                address=address_obj, nametag=label
-            ).exists():
-                Tag.objects.create(
-                    address=address_obj,
-                    nametag=label,
-                    created_by_session_id=str(uuid.uuid4()),
-                    source="etherscan"
-                )
+        add_label_to_db(label, "etherscan", address)
 
         return label
 
