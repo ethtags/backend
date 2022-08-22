@@ -499,6 +499,50 @@ class NametagsTests(APITestCase):
         self.assertEqual(response.data[2]["id"], 2)
         self.assertEqual(response.data[3]["id"], 1)
 
+    def test_get_address_nametags_sorted(self):
+        """
+        Assert that fetching an address returns
+        nametags sorted from greatest to least net upvote count.
+        Assert that nametags with the same net upvote count
+        are sorted from most recent to least recent.
+        """
+        # set up test
+        url = f"/{self.test_addrs[0]}/"
+
+        # create three nametags
+        self.req_data["nametag"] = "Nametag One"
+        one = self.client.post(self.urls["create"], self.req_data)
+        self.req_data["nametag"] = "Nametag Two"
+        two = self.client.post(self.urls["create"], self.req_data)
+        self.req_data["nametag"] = "Nametag Three"
+        three = self.client.post(self.urls["create"], self.req_data)
+        self.req_data["nametag"] = "Nametag Four"
+        four = self.client.post(self.urls["create"], self.req_data)
+
+        # upvote Nametag Four 3 times
+        # upvote Nametag Three 3 times
+        # upvote Nametag Two 3 times and downvote once
+        # upvote Nametag One 3 times and downvote twice
+        self._vote_tag_n_times(self.test_addrs[0], four.data["id"], True, 3)
+        self._vote_tag_n_times(self.test_addrs[0], three.data["id"], True, 3)
+        self._vote_tag_n_times(self.test_addrs[0], two.data["id"], True, 3)
+        self._vote_tag_n_times(self.test_addrs[0], two.data["id"], False, 1)
+        self._vote_tag_n_times(self.test_addrs[0], one.data["id"], True, 3)
+        self._vote_tag_n_times(self.test_addrs[0], one.data["id"], False, 2)
+
+        # GET the nametags
+        response = self.client.get(url)
+
+        # assert that Nametag Four is first
+        # assert that Nametag Three is second
+        # assert that Nametag Two is second
+        # assert that Nametag One is third
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["nametags"][0]["id"], 4)
+        self.assertEqual(response.data["nametags"][1]["id"], 3)
+        self.assertEqual(response.data["nametags"][2]["id"], 2)
+        self.assertEqual(response.data["nametags"][3]["id"], 1)
+
     def _vote_tag_n_times(self, address, tag_id, vote_value, num):
         """
         Upvotes/Downvotes the given address/nametag num amount of times.
@@ -720,3 +764,25 @@ class VoteTests(APITestCase):
         self.client.cookies.clear()  # refresh cookies to act as a new user
         response = self.client.get(self.urls["list"])
         self.assertEqual(response.data["userVoted"], False)
+
+    def test_get_address_correct_votes(self):
+        """
+        Assert that the correct votes data is returned
+        when a request is made to get an address.
+        """
+        # set up test
+        url = f"/{self.test_addrs[0]}/"
+
+        # make request
+        response = self.client.get(url)
+
+        # assert that the vote data for the nametag
+        # that was created in the setUp method is correct
+        expected = {
+            "upvotes": 1,
+            "downvotes": 0,
+            "userVoted": True,
+            "userVoteChoice": True
+        }
+        nametags = response.data["nametags"]
+        self.assertDictEqual(nametags[0]["votes"], expected)

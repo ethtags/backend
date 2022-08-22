@@ -5,16 +5,17 @@ Views for the nametags application.
 
 # third party imports
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Case, IntegerField, Sum, Value, When
+from django.db.models import Value
 from django.http import Http404
-from rest_framework import generics, mixins
-from rest_framework.exceptions import ParseError
+from rest_framework import generics, mixins, status
+from rest_framework.exceptions import NotFound, ParseError
 from rest_framework.response import Response
 
 # our imports
 from .constants import ADDRESS_FORMAT
 from .jobs.controllers import ScraperJobsController
 from .models import Address, Tag, Vote
+from .utils import order_nametags_queryset
 from . import serializers
 
 
@@ -29,13 +30,35 @@ class AddressRetrieve(generics.RetrieveAPIView):
         """
         Returns the object the view is displaying.
         """
-        filter_kwargs = {"pubkey": self.address}
-        obj = generics.get_object_or_404(self.get_queryset(), **filter_kwargs)
+        try:
+            filter_kwargs = {"pubkey": self.address}
+            queryset = self.get_queryset()
+            obj = queryset.get(**filter_kwargs)
 
-        # May raise a permission denied
-        self.check_object_permissions(self.request, obj)
+            # May raise a permission denied
+            self.check_object_permissions(self.request, obj)
 
-        return obj
+            return obj
+
+        except Address.DoesNotExist as exc:
+            raise NotFound() from exc
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Retrieves an object and returns its serialized
+        representation in a Response.
+        """
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+
+        # return 404 and body indicating whether sources are stale
+        except NotFound:
+            return Response(
+                status=status.HTTP_404_NOT_FOUND,
+                data={"sourcesAreStale": self.sources_are_stale}
+            )
 
     def get_queryset(self):
         """
@@ -78,23 +101,8 @@ class TagListCreate(generics.ListCreateAPIView):
         # query for all tags matching the address given in the url
         queryset = Tag.objects.filter(address=self.kwargs["address"].lower())
 
-        # annotate the tags so that they can be sorted by net upvote count
-        # https://docs.djangoproject.com/en/4.0/topics/db/aggregation/
-        # https://docs.djangoproject.com/en/4.0/ref/models/conditional-expressions/
-        queryset = queryset.annotate(
-            net_upvotes=Sum(
-                Case(
-                    When(votes__value=True, then=1),
-                    When(votes__value=False, then=-1),
-                    When(votes__value=None, then=0),
-                    output_field=IntegerField()
-                )
-            )
-        )
-
         # sort the queryset by descending net upvote count
-        # (upvotes minus downvotes) from greatest to least
-        queryset = queryset.order_by("-net_upvotes", "-created")
+        queryset = order_nametags_queryset(queryset)
 
         return queryset
 

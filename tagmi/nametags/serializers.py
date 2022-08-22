@@ -10,7 +10,7 @@ from rest_framework.exceptions import PermissionDenied
 # our imports
 from .constants import NAMETAG_FORMAT
 from .models import Address, Tag, Vote
-from .utils import create_session_if_dne
+from .utils import create_session_if_dne, order_nametags_queryset
 
 
 class VoteSerializer(serializers.ModelSerializer):
@@ -38,12 +38,13 @@ class VoteSerializer(serializers.ModelSerializer):
         """
         session_id = self.context['request'].session.session_key
 
-        # VoteSerializer is nested and its parent is
-        # a ListSerializer or TagSerialzier, e.g.
+        # VoteSerializer is nested, e.g.
+        #   - when doing a GET for an address
         #   - when doing a GET for a list of nametags
         #   - when doing a POST for a nametag
         if isinstance(self.root, (
             serializers.ListSerializer,
+            AddressSerializer,
             TagSerializer
         )):
             tag = self.parent.instance
@@ -65,12 +66,13 @@ class VoteSerializer(serializers.ModelSerializer):
         """
         session_id = self.context['request'].session.session_key
 
-        # VoteSerializer is nested and its parent is
-        # a ListSerializer or TagSerialzier, e.g.
+        # VoteSerializer is nested, e.g.
+        #   - when doing a GET for an address
         #   - when doing a GET for a list of nametags
         #   - when doing a POST for a nametag
         if isinstance(self.root, (
             serializers.ListSerializer,
+            AddressSerializer,
             TagSerializer
         )):
             tag = self.parent.instance
@@ -91,12 +93,13 @@ class VoteSerializer(serializers.ModelSerializer):
         """
         Return the total number of upvotes for a given nametag.
         """
-        # VoteSerializer is nested and its parent is
-        # a ListSerializer or TagSerialzier, e.g.
+        # VoteSerializer is nested, e.g.
+        #   - when doing a GET for an address
         #   - when doing a GET for a list of nametags
         #   - when doing a POST for a nametag
         if isinstance(self.root, (
             serializers.ListSerializer,
+            AddressSerializer,
             TagSerializer
         )):
             tag = self.parent.instance
@@ -112,12 +115,13 @@ class VoteSerializer(serializers.ModelSerializer):
         """
         Return the total number of downvotes for a given nametag.
         """
-        # VoteSerializer is nested and its parent is
-        # a ListSerializer or TagSerialzier, e.g.
+        # VoteSerializer is nested, e.g.
+        #   - when doing a GET for an address
         #   - when doing a GET for a list of nametags
         #   - when doing a POST for a nametag
         if isinstance(self.root, (
             serializers.ListSerializer,
+            AddressSerializer,
             TagSerializer
         )):
             tag = self.parent.instance
@@ -254,13 +258,21 @@ class AddressSerializer(serializers.ModelSerializer):
             "nametags", "sourcesAreStale"
         ]
 
-    nametags = TagSerializer(
-        source="tags",
-        many=True,
-        read_only=True
-    )
-
+    nametags = serializers.SerializerMethodField("get_nametags")
     sourcesAreStale = serializers.BooleanField(
         source="sources_are_stale",
         read_only=True
     )
+
+    def get_nametags(self, instance):
+        """
+        Returns sorted nametags.
+        """
+        nametags = instance.tags
+        nametags = order_nametags_queryset(nametags)
+        serializer = TagSerializer(
+            nametags,
+            many=True,
+            context=self.context
+        )
+        return serializer.data
