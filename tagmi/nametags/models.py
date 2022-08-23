@@ -60,7 +60,7 @@ class Tag(models.Model):
         related_name="tags"
     )
     nametag = models.CharField(
-        max_length=60,
+        max_length=255,
         blank=False,
     )
     created_by_session_id = models.CharField(

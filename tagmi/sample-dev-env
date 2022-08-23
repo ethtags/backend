@@ -1,5 +1,6 @@
 SECRET_KEY="django-insecure-fg8s*+tkjtpim=fh+1&ns@=2e5_u9#69@6l!69av+x(-=z4gf!"
 ALLOWED_HOSTS="127.0.0.1,localhost,192.168.56.101"
+DJANGO_LOG_LEVEL="INFO"
 DEBUG=True
 DB_ENGINE="django.db.backends.sqlite3"
 DB_NAME="db.sqlite3"
@@ -14,3 +15,5 @@ DISABLE_COLLECTSTATIC=1
 SENTRY_DSN="https://92c060334a2f482ebcacaed87c62db4b@o1315518.ingest.sentry.io/6567358"
 SENTRY_ENVIRONMENT="dev"
 SENTRY_SAMPLE_RATE=1.0
+REDIS_URL="redis://:@127.0.0.1:6379"
+RQ_DEFAULT_RESULT_TTL=28800

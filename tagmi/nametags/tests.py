@@ -8,13 +8,13 @@ from unittest import mock
 
 # third part imports
 from rest_framework import status
-from rest_framework.test import APITestCase
 
 # our imports
+from .basetest import BaseTestCase
 from .models import Address, Tag, Vote
 
 
-class NametagsTests(APITestCase):
+class AddressTests(BaseTestCase):
     """
     Represents a Django class test case.
     """
@@ -23,6 +23,123 @@ class NametagsTests(APITestCase):
         """
         Runs once before each test.
         """
+        # call parent
+        super().setUp()
+
+        # common test addresses
+        self.test_addrs = [
+            "0x4622BeF7d6C5f7f1ACC479B764688DC3E7316d68",
+            "0x41329485877D12893bC4ef88A9208ee5cB5f5525"
+        ]
+
+        # common test urls
+        self.urls = {}
+        self.urls["retrieve"] = f"/{self.test_addrs[0]}/"
+
+        # create Address record for the first test address
+        Address.objects.create(pubkey=self.test_addrs[0].lower())
+
+    def test_get_address_stale_sources(self):
+        """
+        Assert that retrieving an address with stale sources
+        returns the expected data.
+        """
+        # set up test
+        with mock.patch(
+            "nametags.jobs.controllers.ScraperJobsController.enqueue_if_stale",
+        ) as mock_controller:
+            # make request
+            mock_controller.return_value = (True, True)  # stale, enqueued
+            response = self.client.get(self.urls["retrieve"])
+
+        # make assertions
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        expected = {
+            "sourcesAreStale": True,
+            "nametags": []
+        }
+        self.assertDictEqual(response.data, expected)
+
+    def test_get_address_fresh_sources(self):
+        """
+        Assert that retrieving an address with fresh sources
+        returns the expected data.
+        """
+        # set up test
+        with mock.patch(
+            "nametags.jobs.controllers.ScraperJobsController.enqueue_if_stale",
+        ) as mock_controller:
+            # make request
+            mock_controller.return_value = (False, False)  # stale, enqueued
+            response = self.client.get(self.urls["retrieve"])
+
+        # make assertions
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        expected = {
+            "sourcesAreStale": False,
+            "nametags": []
+        }
+        self.assertDictEqual(response.data, expected)
+
+    def test_get_address_invalid(self):
+        """
+        Assert that retrieving an invalid address
+        does not add any jobs to redis, and returns
+        a 400 BAD REQUEST.
+        """
+        # set up test
+        bad_address = self.test_addrs[0][2:42]
+        url = f"/{bad_address}/"
+
+        with mock.patch(
+            "nametags.jobs.controllers.ScraperJobsController.enqueue_if_stale",
+        ) as mock_controller:
+            # make request
+            response = self.client.get(url)
+
+        # assert 400 BAD REQUEST is returned
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # assert that the scraper job controller was not called
+        self.assertEqual(mock_controller.call_count, 0)
+
+    def test_get_address_dne(self):
+        """
+        Assert that retrieving an address that does not exist
+        returns a 404 NOT FOUND.
+        Assert that the ScraperJobsController was called to add
+        a job to the redis queue. This behavior is tested further in
+        ./jobs/test_controllers.py
+        """
+        # set up test
+        url = f"/{self.test_addrs[1]}/"
+
+        with mock.patch(
+            "nametags.jobs.controllers.ScraperJobsController.enqueue_if_stale",
+        ) as mock_controller:
+            mock_controller.return_value = (True, True)  # stale, enqueued
+            response = self.client.get(url)
+
+        # make assertions
+        # assert 404 NOT FOUND was returned
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        # assert that the ScraperJobsController was called
+        mock_controller.assert_called_with(self.test_addrs[1].lower())
+
+
+class NametagsTests(BaseTestCase):
+    """
+    Represents a Django class test case.
+    """
+
+    def setUp(self):
+        """
+        Runs once before each test.
+        """
+        # call parent
+        super().setUp()
+
         # common test addresses
         self.test_addrs = [
             "0x4622BeF7d6C5f7f1ACC479B764688DC3E7316d68",
@@ -247,6 +364,7 @@ class NametagsTests(APITestCase):
         Assert that a list of all nametags related to an address are returned.
         """
         # set up test
+
         # create nametags for addresses one and two
         self.req_data["nametag"] = "Address One Nametag One"
         self.client.post(self.urls["create"], self.req_data)
@@ -387,6 +505,50 @@ class NametagsTests(APITestCase):
         self.assertEqual(response.data[2]["id"], 2)
         self.assertEqual(response.data[3]["id"], 1)
 
+    def test_get_address_nametags_sorted(self):
+        """
+        Assert that fetching an address returns
+        nametags sorted from greatest to least net upvote count.
+        Assert that nametags with the same net upvote count
+        are sorted from most recent to least recent.
+        """
+        # set up test
+        url = f"/{self.test_addrs[0]}/"
+
+        # create three nametags
+        self.req_data["nametag"] = "Nametag One"
+        one = self.client.post(self.urls["create"], self.req_data)
+        self.req_data["nametag"] = "Nametag Two"
+        two = self.client.post(self.urls["create"], self.req_data)
+        self.req_data["nametag"] = "Nametag Three"
+        three = self.client.post(self.urls["create"], self.req_data)
+        self.req_data["nametag"] = "Nametag Four"
+        four = self.client.post(self.urls["create"], self.req_data)
+
+        # upvote Nametag Four 3 times
+        # upvote Nametag Three 3 times
+        # upvote Nametag Two 3 times and downvote once
+        # upvote Nametag One 3 times and downvote twice
+        self._vote_tag_n_times(self.test_addrs[0], four.data["id"], True, 3)
+        self._vote_tag_n_times(self.test_addrs[0], three.data["id"], True, 3)
+        self._vote_tag_n_times(self.test_addrs[0], two.data["id"], True, 3)
+        self._vote_tag_n_times(self.test_addrs[0], two.data["id"], False, 1)
+        self._vote_tag_n_times(self.test_addrs[0], one.data["id"], True, 3)
+        self._vote_tag_n_times(self.test_addrs[0], one.data["id"], False, 2)
+
+        # GET the nametags
+        response = self.client.get(url)
+
+        # assert that Nametag Four is first
+        # assert that Nametag Three is second
+        # assert that Nametag Two is second
+        # assert that Nametag One is third
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["nametags"][0]["id"], 4)
+        self.assertEqual(response.data["nametags"][1]["id"], 3)
+        self.assertEqual(response.data["nametags"][2]["id"], 2)
+        self.assertEqual(response.data["nametags"][3]["id"], 1)
+
     def _vote_tag_n_times(self, address, tag_id, vote_value, num):
         """
         Upvotes/Downvotes the given address/nametag num amount of times.
@@ -400,7 +562,7 @@ class NametagsTests(APITestCase):
             assert resp.status_code == 201
 
 
-class VoteTests(APITestCase):
+class VoteTests(BaseTestCase):
     """
     Represents a Django class test case.
     """
@@ -409,6 +571,9 @@ class VoteTests(APITestCase):
         """
         Runs once before each test.
         """
+        # call parent
+        super().setUp()
+
         self.test_addrs = [
             "0x4622BeF7d6C5f7f1ACC479B764688DC3E7316d68",
             "0x41329485877D12893bC4ef88A9208ee5cB5f5525"
@@ -608,3 +773,25 @@ class VoteTests(APITestCase):
         self.client.cookies.clear()  # refresh cookies to act as a new user
         response = self.client.get(self.urls["list"])
         self.assertEqual(response.data["userVoted"], False)
+
+    def test_get_address_correct_votes(self):
+        """
+        Assert that the correct votes data is returned
+        when a request is made to get an address.
+        """
+        # set up test
+        url = f"/{self.test_addrs[0]}/"
+
+        # make request
+        response = self.client.get(url)
+
+        # assert that the vote data for the nametag
+        # that was created in the setUp method is correct
+        expected = {
+            "upvotes": 1,
+            "downvotes": 0,
+            "userVoted": True,
+            "userVoteChoice": True
+        }
+        nametags = response.data["nametags"]
+        self.assertDictEqual(nametags[0]["votes"], expected)

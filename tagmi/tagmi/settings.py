@@ -11,9 +11,9 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 # std lib imports
-
-# thid part imports
 from pathlib import Path
+
+# third party imports
 from decouple import config
 from sentry_sdk.integrations.django import DjangoIntegration
 import sentry_sdk
@@ -125,6 +125,29 @@ AUTH_PASSWORD_VALIDATORS = [
 LOGGING = {
     'version': 1,                       # the dictConfig format version
     'disable_existing_loggers': False,  # retain the default loggers
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} {module}:{lineno} {levelname} {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S'
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'syslog': {
+            'class': 'logging.handlers.SysLogHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        '': {
+            'level': config("DJANGO_LOG_LEVEL", cast=str),
+            'handlers': ['console', 'syslog'],
+        },
+    },
 }
 
 
@@ -183,3 +206,9 @@ sentry_sdk.init(
     environment=config("SENTRY_ENVIRONMENT", cast=str),
     traces_sample_rate=config("SENTRY_SAMPLE_RATE", cast=float)
 )
+
+# rq (redis queue) configuration
+REDIS_URL = config("REDIS_URL", cast=str)
+RQ = {
+    'DEFAULT_RESULT_TTL': config("RQ_DEFAULT_RESULT_TTL", cast=int)
+}
