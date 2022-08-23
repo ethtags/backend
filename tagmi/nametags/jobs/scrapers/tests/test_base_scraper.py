@@ -9,7 +9,7 @@ import requests
 import responses
 
 # our imports
-from .base import BaseTestCase
+from ....basetest import BaseTestCase
 from .. import constants
 from ..base_scraper import BaseScraper
 

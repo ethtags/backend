@@ -8,13 +8,13 @@ from unittest import mock
 
 # third part imports
 from rest_framework import status
-from rest_framework.test import APITestCase
 
 # our imports
+from .basetest import BaseTestCase
 from .models import Address, Tag, Vote
 
 
-class AddressTests(APITestCase):
+class AddressTests(BaseTestCase):
     """
     Represents a Django class test case.
     """
@@ -23,6 +23,9 @@ class AddressTests(APITestCase):
         """
         Runs once before each test.
         """
+        # call parent
+        super().setUp()
+
         # common test addresses
         self.test_addrs = [
             "0x4622BeF7d6C5f7f1ACC479B764688DC3E7316d68",
@@ -125,7 +128,7 @@ class AddressTests(APITestCase):
         mock_controller.assert_called_with(self.test_addrs[1].lower())
 
 
-class NametagsTests(APITestCase):
+class NametagsTests(BaseTestCase):
     """
     Represents a Django class test case.
     """
@@ -134,6 +137,9 @@ class NametagsTests(APITestCase):
         """
         Runs once before each test.
         """
+        # call parent
+        super().setUp()
+
         # common test addresses
         self.test_addrs = [
             "0x4622BeF7d6C5f7f1ACC479B764688DC3E7316d68",
@@ -556,7 +562,7 @@ class NametagsTests(APITestCase):
             assert resp.status_code == 201
 
 
-class VoteTests(APITestCase):
+class VoteTests(BaseTestCase):
     """
     Represents a Django class test case.
     """
@@ -565,6 +571,9 @@ class VoteTests(APITestCase):
         """
         Runs once before each test.
         """
+        # call parent
+        super().setUp()
+
         self.test_addrs = [
             "0x4622BeF7d6C5f7f1ACC479B764688DC3E7316d68",
             "0x41329485877D12893bC4ef88A9208ee5cB5f5525"

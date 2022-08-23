@@ -2,17 +2,18 @@
 Module containing base test class for jobs and scrapers.
 """
 # std lib imports
+from unittest import mock
 
 # third party imports
-from django.test import TestCase
+from rest_framework.test import APITestCase
 import fakeredis
 import responses
 
 # our imports
-from . import queue
+from .jobs import queue
 
 
-class BaseTestCase(TestCase):
+class BaseTestCase(APITestCase):
     """
     Base class for the job tests.
     """
@@ -22,7 +23,9 @@ class BaseTestCase(TestCase):
         super().setUp()
 
         # fake redis backend and queue
-        self.fake_redis = fakeredis.FakeRedis(fakeredis.FakeServer())
+        redis_patcher = mock.patch("redis.Redis", new=fakeredis.FakeRedis)
+        redis_patcher.start()
+        self.fake_redis = fakeredis.FakeRedis()
         self.queue = queue.Queue(connection=self.fake_redis, is_async=False)
 
         # fake requests/responses
@@ -31,6 +34,9 @@ class BaseTestCase(TestCase):
 
         # address to be used in tests
         self.test_addr = "0x7F101fE45e6649A6fB8F3F8B43ed03D353f2B90c".lower()
+
+        # clean up all mock patches
+        self.addCleanup(mock.patch.stopall)
 
     def tearDown(self):
         """ Runs after each test. """

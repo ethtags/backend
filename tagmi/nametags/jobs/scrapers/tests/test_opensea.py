@@ -9,13 +9,13 @@ from responses.registries import OrderedRegistry
 import responses
 
 # our imports
-from .base import BaseScraperTestCase
+from ....basetest import BaseTestCase
 from .. import opensea
 from ..base_scraper import BaseScraper
 from ....models import Tag
 
 
-class OpenseaTests(BaseScraperTestCase):
+class OpenseaTests(BaseTestCase):
     """
     Tests the opensea scraper.
     """
@@ -25,7 +25,7 @@ class OpenseaTests(BaseScraperTestCase):
 
         super().setUp()
         self.client = opensea.OpenseaScraper()
-        self.samples_dir = Path(self.samples_dir, "opensea")
+        self.samples_dir = Path(__file__).parent.joinpath("./samples/opensea")
 
     def _mock_landing_page_resp(self):
         """

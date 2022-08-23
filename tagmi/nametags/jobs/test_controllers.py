@@ -7,7 +7,7 @@ from unittest import mock
 import rq
 
 # our imports
-from .basetest import BaseTestCase
+from ..basetest import BaseTestCase
 from .controllers import ScraperJobsController
 
 

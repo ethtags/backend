@@ -11,14 +11,14 @@ from responses.registries import OrderedRegistry
 import responses
 
 # our imports
-from .base import BaseScraperTestCase
+from ....basetest import BaseTestCase
 from .. import dune
 from ..base_scraper import BaseScraper
 from ....models import Tag
 
 
 @mock.patch("nametags.jobs.scrapers.dune.time", mock.MagicMock())
-class DuneTests(BaseScraperTestCase):
+class DuneTests(BaseTestCase):
     """
     Tests the dune scraper.
     """
@@ -29,7 +29,7 @@ class DuneTests(BaseScraperTestCase):
 
         super().setUp()
         self.client = dune.DuneScraper()
-        self.samples_dir = Path(self.samples_dir, "dune")
+        self.samples_dir = Path(__file__).parent.joinpath("./samples/dune")
 
         # fake response data for csrf request
         self.csrf_resp = {

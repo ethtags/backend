@@ -11,13 +11,13 @@ from responses.registries import OrderedRegistry
 import responses
 
 # our imports
-from .base import BaseScraperTestCase
+from ....basetest import BaseTestCase
 from .. import etherscan
 from ..base_scraper import BaseScraper
 from ....models import Tag
 
 
-class EtherscanTests(BaseScraperTestCase):
+class EtherscanTests(BaseTestCase):
     """
     Tests the etherscan scraper.
     """
@@ -27,7 +27,9 @@ class EtherscanTests(BaseScraperTestCase):
 
         super().setUp()
         self.client = etherscan.EtherscanScraper()
-        self.samples_dir = Path(self.samples_dir, "etherscan")
+        self.samples_dir = Path(__file__).parent.joinpath(
+            "./samples/etherscan"
+        )
 
     def test_job_parent(self):
         """ Assert that the scraper is a child of the Base parent. """
