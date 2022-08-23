@@ -8,6 +8,7 @@ Module containing scraper jobs.
 # our imports
 from .scrapers.dune import DuneScraper
 from .scrapers.etherscan import EtherscanScraper
+from .scrapers.opensea import OpenseaScraper
 
 
 class ScraperJob():
@@ -60,4 +61,23 @@ class DuneScraperJob(ScraperJob):
         Runs the dune scraper.
         """
         scraper = DuneScraper()
+        return scraper.run()
+
+
+class OpenseaScraperJob(ScraperJob):
+    """
+    Job that looks up an address on opensea.
+    """
+
+    @property
+    def name(self):
+        """ Returns the name of the scraper job. """
+
+        return "opensea_scraper"
+
+    def run(self):
+        """
+        Runs the dune scraper.
+        """
+        scraper = OpenseaScraper()
         return scraper.run()

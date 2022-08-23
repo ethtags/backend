@@ -65,9 +65,9 @@ class OpenseaScraper(BaseScraper):
         # build a string containing profile metadata
         username = self._parse_username(tree)
         twitter = self._parse_twitter(tree)
-        collected = self._parse_collected(tree)
-        created = self._parse_created(tree)
-        favorited = self._parse_favorited(tree)
+        collected = self._parse_tab(tree, "Collected")
+        created = self._parse_tab(tree, "Created")
+        favorited = self._parse_tab(tree, "Favorited")
         label = f"Username: {username} - Twitter: {twitter} - " \
                 f"{joined} - Collected: {collected} - " \
                 f"Created: {created} - Favorited: {favorited}"
@@ -102,44 +102,20 @@ class OpenseaScraper(BaseScraper):
 
         return twitter
 
-    def _parse_collected(self, lxml_tree):
+    def _parse_tab(self, lxml_tree, tab_text):
         """
-        Returns number of collected NFTs as a string.
-        Returns 0 if no info can be found.
+        Returns the number that is next to the tab with
+        the given text. E.g, "Collected", "Created", etc.
+        Returns 0 if tab or number could not be found.
         """
-        collected = lxml_tree.xpath("/html/body/div[1]/div/main/div/div/div/div[5]/div/div[2]/div/div/nav/div[1]/ul/div/li[2]/a/span[2]")  # noqa: E501 pylint: disable=line-too-long
+        # find tab with the given text
+        tab = lxml_tree.xpath(f'//span[contains(text(),"{tab_text}")]')
+        if len(tab) == 0:
+            return "0"
 
-        if len(collected) != 0:
-            collected = collected[0].text
-        else:
-            collected = "0"
+        # sibling element that contains number
+        amount = tab[0].getnext()
+        if amount is None:
+            return "0"
 
-        return collected
-
-    def _parse_created(self, lxml_tree):
-        """
-        Returns number of created NFTs as a string.
-        Returns 0 if no info can be found.
-        """
-        created = lxml_tree.xpath("/html/body/div[1]/div/main/div/div/div/div[5]/div/div[2]/div/div/nav/div[1]/ul/div/li[3]/a/span[2]")  # noqa: E501 pylint: disable=line-too-long
-
-        if len(created) != 0:
-            created = created[0].text
-        else:
-            created = "0"
-
-        return created
-
-    def _parse_favorited(self, lxml_tree):
-        """
-        Returns number of favorited NFTs as a string.
-        Returns 0 if no info can be found.
-        """
-        favorited = lxml_tree.xpath("/html/body/div[1]/div/main/div/div/div/div[5]/div/div[2]/div/div/nav/div[1]/ul/div/li[4]/a/span[2]")  # noqa: E501 pylint: disable=line-too-long
-
-        if len(favorited) != 0:
-            favorited = favorited[0].text
-        else:
-            favorited = "0"
-
-        return favorited
+        return amount.text

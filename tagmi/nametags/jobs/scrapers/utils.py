@@ -23,8 +23,6 @@ def add_label_to_db(label, source, address):
     if label is None:
         return
 
-    logger.info("label found, adding it to Tags table")
-
     # get or create address
     address_obj, _ = Address.objects.get_or_create(
         pubkey=address
@@ -34,6 +32,7 @@ def add_label_to_db(label, source, address):
     if not Tag.objects.filter(
         address=address_obj, nametag=label
     ).exists():
+        logger.info("new label found, adding it to Tags table")
         Tag.objects.create(
             address=address_obj,
             nametag=label,

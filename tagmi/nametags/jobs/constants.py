@@ -4,12 +4,14 @@
 # third party imports
 
 # our imports
-from .scraper_jobs import DuneScraperJob, EtherscanScraperJob
+from .scraper_jobs import DuneScraperJob, EtherscanScraperJob, \
+    OpenseaScraperJob
 
 
 scraper_jobs_to_run = [
     DuneScraperJob,
-    EtherscanScraperJob
+    EtherscanScraperJob,
+    OpenseaScraperJob
 ]
 
 
