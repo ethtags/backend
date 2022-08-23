@@ -4,6 +4,7 @@ Module containing job controllers.
 # std lib imports
 
 # third party imports
+from django.conf import settings
 from rq.job import JobStatus
 import redis
 import rq
@@ -24,7 +25,7 @@ class ScraperJobsController():
         # create redis cursor if none given
         self.redis_cursor = redis_cursor
         if self.redis_cursor is None:
-            self.redis_cursor = redis.Redis()
+            self.redis_cursor = redis.from_url(settings.REDIS_URL)
 
         # create redis queue if none given
         self.redis_queue = redis_queue
