@@ -23,7 +23,7 @@ class BaseTestCase(APITestCase):
         super().setUp()
 
         # fake redis backend and queue
-        redis_patcher = mock.patch("redis.Redis", new=fakeredis.FakeRedis)
+        redis_patcher = mock.patch("redis.from_url", new=fakeredis.FakeRedis)
         redis_patcher.start()
         self.fake_redis = fakeredis.FakeRedis()
         self.queue = queue.Queue(connection=self.fake_redis, is_async=False)
