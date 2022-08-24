@@ -64,11 +64,11 @@ class OpenseaScraper(BaseScraper):
 
         # build a string containing profile metadata
         username = self._parse_username(tree)
-        twitter = self._parse_twitter(tree)
+        socials = self._parse_socials(tree)
         collected = self._parse_tab(tree, "Collected")
         created = self._parse_tab(tree, "Created")
         favorited = self._parse_tab(tree, "Favorited")
-        label = f"Username: {username} - Twitter: {twitter} - " \
+        label = f"Username: {username} - Socials: {socials} - " \
                 f"{joined} - Collected: {collected} - " \
                 f"Created: {created} - Favorited: {favorited}"
 
@@ -88,19 +88,30 @@ class OpenseaScraper(BaseScraper):
         """
         return lxml_tree.xpath("/html/body/div[1]/div/main/div/div/div/div[3]/div/div/div[1]/div/div[2]/h1")[0].text  # noqa: E501 pylint: disable=line-too-long
 
-    def _parse_twitter(self, lxml_tree):
+    def _parse_socials(self, lxml_tree):
         """
-        Returns twitter profile link as a string.
-        Returns None if twitter link does not exist.
+        Returns social links as a string.
+        Returns None if socials do not exist.
         """
-        twitter = lxml_tree.xpath("/html/body/div[1]/div/main/div/div/div/div[3]/div/div/div[2]/div/div/div[1]/div/div[1]/a")  # noqa: E501 pylint: disable=line-too-long
+        # find the social links
+        share_div = lxml_tree.xpath('//*[@id="main"]/div/div/div/div[3]/div/div/div[2]/div/div/div[2]')  # noqa: E501 pylint: disable=line-too-long
+        socials_div = share_div[0].getprevious()
+        links = socials_div.iter(tag="a")
 
-        if len(twitter) != 0:
-            twitter = twitter[0].get("href")
-        else:
-            twitter = None
+        # build the string
+        to_ret = ""
+        for link in links:
+            href = link.get("href")
+            to_ret += f"{href} "
 
-        return twitter
+        # return None if no socials were found
+        if to_ret == "":
+            return None
+
+        # format the string
+        to_ret = to_ret.strip()
+
+        return to_ret
 
     def _parse_tab(self, lxml_tree, tab_text):
         """

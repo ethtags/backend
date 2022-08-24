@@ -101,11 +101,6 @@ class DuneScraper(BaseScraper):
         if nametag == "":
             return None
 
-        # trim to 255 chars if needed
-        if len(nametag) > 255:
-            nametag = nametag[0:252]
-            nametag += "..."
-
         # store nametag in database and return it
         add_label_to_db(nametag, "dune", address)
 
