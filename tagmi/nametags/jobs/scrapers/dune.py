@@ -4,14 +4,13 @@ Module containing etherscan scraper.
 # std lib imports
 import logging
 import time
-import uuid
 
 # third party imports
 import rq
 
 # our imports
 from .base_scraper import BaseScraper
-from ...models import Address, Tag
+from .utils import add_label_to_db
 
 
 logger = logging.getLogger(__name__)
@@ -50,8 +49,6 @@ class DuneScraper(BaseScraper):
         Returns a list of labels if they are found.
         Returns None if no label is found.
         """
-        to_ret = []
-
         # make request to dune labels home page
         logger.info("making GET to dune labels home page")
         self.get("https://dune.com/labels")
@@ -79,32 +76,37 @@ class DuneScraper(BaseScraper):
         )
         data = resp.json()
 
-        # store labels in database
+        # build nametag from labels
+        nametag = ""
+        count = 0
         for item in data:
-            logger.info("found nametag, adding it to Tags table")
+            # only get first 10 labels
+            if count == 10:
+                nametag += ", and more..."
+                break
 
-            # get or create address
-            address_obj, _ = Address.objects.get_or_create(
-                pubkey=address
-            )
+            # pull label from json
+            label = f"{item['name']}"
 
-            # create Tag if it does not exist
-            nametag = f"{item['type']}: {item['name']}"
-            if not Tag.objects.filter(
-                address=address_obj,
-                nametag=nametag
-            ).exists():
-                Tag.objects.get_or_create(
-                    address=address_obj,
-                    nametag=nametag,
-                    created_by_session_id=str(uuid.uuid4()),
-                    source="dune"
-                )
+            # format label
+            if count == 0:
+                nametag += f"{label}"
+            else:
+                nametag += f", {label}"
 
-            to_ret.append(nametag)
+            # increment counter
+            count += 1
 
-        # return list of labels or None
-        if len(to_ret) != 0:
-            return to_ret
+        # return if nametag is empty
+        if nametag == "":
+            return None
 
-        return None
+        # trim to 255 chars if needed
+        if len(nametag) > 255:
+            nametag = nametag[0:252]
+            nametag += "..."
+
+        # store nametag in database and return it
+        add_label_to_db(nametag, "dune", address)
+
+        return nametag

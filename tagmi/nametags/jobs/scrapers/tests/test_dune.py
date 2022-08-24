@@ -156,7 +156,7 @@ class DuneTests(BaseTestCase):
         self._mock_list_labels_resp(self.single_label_resp)
 
         # assert there are no matching Tags in the database before scraping
-        nametag = f"{self.type1}: {self.label}"
+        nametag = f"{self.label}"
         self.assertFalse(
             Tag.objects.filter(address=self.test_addr, nametag=nametag)
             .exists()
@@ -173,24 +173,21 @@ class DuneTests(BaseTestCase):
 
     def test_multiple_labels_found(self):
         """
-        Assert that multiple nametags are added to the database
+        Assert that a single nametag is added to the database
         when Dune returns multiple labels.
+        Assert that only the first 10 labels are scraped, and the
+        'and more...' text is shown beside them.
         """
         # set up test
         # register expected requests
         self._mock_landing_page_resp()
         self._mock_csrf_resp()
-        self._mock_list_labels_resp(self.multi_label_resp)
+        multi_label_resp = self.multi_label_resp * 10  # 20 results
+        self._mock_list_labels_resp(multi_label_resp)
 
         # assert there are no matching Tags in the database before scraping
-        nametag_one = f"{self.type1}: {self.label}"
         self.assertFalse(
-            Tag.objects.filter(address=self.test_addr, nametag=nametag_one)
-            .exists()
-        )
-        nametag_two = f"{self.type2}: {self.label}"
-        self.assertFalse(
-            Tag.objects.filter(address=self.test_addr, nametag=nametag_two)
+            Tag.objects.filter(address=self.test_addr)
             .exists()
         )
 
@@ -198,14 +195,10 @@ class DuneTests(BaseTestCase):
         self.queue.enqueue(self.client.run, job_id=self.test_addr)
 
         # make assertions
-        self.assertTrue(
-            Tag.objects.filter(address=self.test_addr, nametag=nametag_one)
-            .exists()
-        )
-        self.assertTrue(
-            Tag.objects.filter(address=self.test_addr, nametag=nametag_two)
-            .exists()
-        )
+        tag = Tag.objects.filter(address=self.test_addr).first()
+        self.assertIn(", and more...", tag.nametag)
+        labels = tag.nametag.split(",")
+        self.assertEqual(len(labels), 11)  # ", and more..." is the 11th
 
     def test_no_labels_found(self):
         """
