@@ -33,6 +33,13 @@ def add_label_to_db(label, source, address):
         address=address_obj, nametag=label
     ).exists():
         logger.info("new label found, adding it to Tags table")
+
+        # trim to 255 chars if needed
+        if len(label) > 255:
+            label = label[0:252]
+            label += "..."
+
+        # add to db
         Tag.objects.create(
             address=address_obj,
             nametag=label,
