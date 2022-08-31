@@ -53,6 +53,7 @@ class EthleaderboardScraper(BaseScraper):
         ens_name = ens_obj.name(address=address)
 
         if ens_name is None:
+            logger.info("address did not resolve to an ENS name, exiting")
             return None
 
         # make request to ethleaderboard home page
