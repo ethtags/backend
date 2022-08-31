@@ -6,12 +6,17 @@ import logging
 import uuid
 
 # third party imports
+from django.conf import settings
+import web3
 
 # our imports
 from ...models import Address, Tag
 
 
 logger = logging.getLogger(__name__)
+web3_provider = web3.providers.HTTPProvider(
+    settings.WEB3_PROVIDER_URL
+)
 
 
 def add_label_to_db(label, source, address):

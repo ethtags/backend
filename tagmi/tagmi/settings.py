@@ -212,3 +212,6 @@ REDIS_URL = config("REDIS_URL", cast=str)
 RQ = {
     'DEFAULT_RESULT_TTL': config("RQ_DEFAULT_RESULT_TTL", cast=int)
 }
+
+# web3 provider
+WEB3_PROVIDER_URL = config("WEB3_PROVIDER_URL", cast=str)

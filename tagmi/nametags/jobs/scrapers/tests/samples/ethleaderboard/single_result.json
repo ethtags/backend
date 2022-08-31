@@ -1,0 +1,66 @@
+{
+  "frens": [
+    {
+      "id": "1431254638305501187",
+      "name": "Renegademaster.eth 🫡",
+      "ens": "renegademaster.eth",
+      "handle": "renegademasterr",
+      "followers": 18236,
+      "verified": false,
+      "added": "2022-08-09T03:04:56.149Z",
+      "updated": "2022-08-09T03:04:56.149Z",
+      "pfp": "https://pbs.twimg.com/profile_images/1555715232126840833/nYP4Rlps_normal.png",
+      "ranking": 1
+    },
+    {
+      "id": "307807875",
+      "name": "Paddy | Ringmaster.eth 🍌",
+      "ens": "ringmaster.eth",
+      "handle": "PaddyWarburton",
+      "followers": 6297,
+      "verified": false,
+      "added": "2022-07-10T14:01:53.004Z",
+      "updated": "2022-07-10T14:01:53.004Z",
+      "pfp": "https://pbs.twimg.com/profile_images/1543122425994420225/zWJMcw-3_normal.jpg",
+      "ranking": 2
+    },
+    {
+      "id": "1466891405758980100",
+      "name": "Lioney 💎 CodingMaster.eth",
+      "ens": "codingmaster.eth",
+      "handle": "lioneycro",
+      "followers": 5917,
+      "verified": false,
+      "added": "2022-08-09T15:06:59.532Z",
+      "updated": "2022-08-09T15:06:59.532Z",
+      "pfp": "https://pbs.twimg.com/profile_images/1553333221890396160/dgL1cHUo_normal.jpg",
+      "ranking": 3
+    },
+    {
+      "id": "781087684102086656",
+      "name": "mrmoneymaster.eth 🦁",
+      "ens": "mrmoneymaster.eth",
+      "handle": "MrDomantasR",
+      "followers": 5796,
+      "verified": false,
+      "added": "2022-08-07T16:20:28.850Z",
+      "updated": "2022-08-07T16:20:28.850Z",
+      "pfp": "https://pbs.twimg.com/profile_images/1496108695381594113/8jqoY0iO_normal.jpg",
+      "ranking": 4
+    },
+    {
+      "id": "742373834",
+      "name": "Master.eth",
+      "ens": "master.eth",
+      "handle": "seekmine",
+      "followers": 4462,
+      "verified": false,
+      "added": "2022-08-25T13:04:36.931Z",
+      "updated": "2022-08-25T13:04:36.931Z",
+      "pfp": "https://pbs.twimg.com/profile_images/1466669862210584576/YASihVX8_normal.jpg",
+      "ranking": 5
+    }
+  ],
+  "count": 5,
+  "response_time": 722
+}

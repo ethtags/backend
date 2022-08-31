@@ -2,7 +2,6 @@
 Module containing tests for the dune.py scraper.
 """
 # std lib imports
-from pathlib import Path
 from unittest import mock
 
 # third party imports
@@ -29,7 +28,6 @@ class DuneTests(BaseTestCase):
 
         super().setUp()
         self.client = dune.DuneScraper()
-        self.samples_dir = Path(__file__).parent.joinpath("./samples/dune")
 
         # fake response data for csrf request
         self.csrf_resp = {

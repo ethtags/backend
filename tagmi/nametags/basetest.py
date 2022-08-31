@@ -8,6 +8,7 @@ from unittest import mock
 from rest_framework.test import APITestCase
 import fakeredis
 import responses
+import web3
 
 # our imports
 from .jobs import queue
@@ -31,6 +32,13 @@ class BaseTestCase(APITestCase):
         # fake requests/responses
         self.mock_responses = responses.RequestsMock()
         self.mock_responses.start()
+
+        # local test web3 provider
+        web3_patcher = mock.patch(
+            "web3.providers.HTTPProvider",
+            new=web3.EthereumTesterProvider
+        )
+        web3_patcher.start()
 
         # address to be used in tests
         self.test_addr = "0x7F101fE45e6649A6fB8F3F8B43ed03D353f2B90c".lower()

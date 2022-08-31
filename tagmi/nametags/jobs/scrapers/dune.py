@@ -87,12 +87,7 @@ class DuneScraper(BaseScraper):
 
             # pull label from json
             label = f"{item['name']}"
-
-            # format label
-            if count == 0:
-                nametag += f"{label}"
-            else:
-                nametag += f", {label}"
+            nametag += f", {label}"
 
             # increment counter
             count += 1
@@ -100,6 +95,9 @@ class DuneScraper(BaseScraper):
         # return if nametag is empty
         if nametag == "":
             return None
+
+        # strip ", " from beginning of nametag
+        nametag = nametag[2:]
 
         # store nametag in database and return it
         add_label_to_db(nametag, "dune", address)
